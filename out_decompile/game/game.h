@@ -3,14 +3,39 @@
 #define VOFF_GAME_H
 
 #include "../voff_bridge.h"
+typedef long double float10;
 
-/* === Data section globals (59 symbols) === */
+/* === Data section globals (95 symbols) === */
+#define DAT_005f8890 (*(uint32_t*)(__data_start + -288624))
+#define DAT_005f8894 (*(uint32_t*)(__data_start + -288620))
 #define DAT_005fb140 (*(uint32_t*)(__data_start + -278208))
 #define DAT_005fb198 (*(uint32_t*)(__data_start + -278120))
 #define DAT_00600e88 (*(uint32_t*)(__data_start + -254328))
 #define DAT_00600ea8 (*(uint32_t*)(__data_start + -254296))
+#define DAT_006471e0 (*(uint32_t*)(__data_start + 33248))
+#define DAT_006471e4 (*(uint32_t*)(__data_start + 33252))
+#define DAT_006471e8 (*(uint32_t*)(__data_start + 33256))
+#define DAT_006536cc (*(uint32_t*)(__data_start + 83660))
 #define DAT_006537b8 (*(uint32_t*)(__data_start + 83896))
+#define DAT_006a067c (*(uint32_t*)(__data_start + 398972))
 #define DAT_006bc94c (*(uint32_t*)(__data_start + 514380))
+#define DAT_006bf444 (*(uint32_t*)(__data_start + 525380))
+#define DAT_006bf448 (*(uint32_t*)(__data_start + 525384))
+#define DAT_007087e0 (*(uint32_t*)(__data_start + 825312))
+#define DAT_00791a58 (*(uint32_t*)(__data_start + 1387096))
+#define DAT_007a24b8 (*(uint32_t*)(__data_start + 1455288))
+#define DAT_007a347c (*(uint32_t*)(__data_start + 1459324))
+#define DAT_007a3740 (*(uint32_t*)(__data_start + 1460032))
+#define DAT_007b5278 (*(uint32_t*)(__data_start + 1532536))
+#define DAT_007b56d4 (*(uint32_t*)(__data_start + 1533652))
+#define DAT_007b5790 (*(uint32_t*)(__data_start + 1533840))
+#define DAT_007e7c58 (*(uint32_t*)(__data_start + 1739864))
+#define DAT_007e7cb8 (*(uint32_t*)(__data_start + 1739960))
+#define DAT_007e82c0 (*(uint32_t*)(__data_start + 1741504))
+#define DAT_007e83c8 (*(uint32_t*)(__data_start + 1741768))
+#define DAT_007e83d8 (*(uint32_t*)(__data_start + 1741784))
+#define DAT_007e87e8 (*(uint32_t*)(__data_start + 1742824))
+#define DAT_00a00a1c (*(uint32_t*)(__data_start + 3938844))
 #define DAT_00bf7758 (*(uint32_t*)(__data_start + 5998424))
 #define DAT_00bf775c (*(uint32_t*)(__data_start + 5998428))
 #define DAT_01ae1c1c (*(uint32_t*)(__data_start + 21638172))
@@ -20,9 +45,11 @@
 #define DAT_01ae353c (*(uint32_t*)(__data_start + 21644604))
 #define DAT_01ae3594 (*(uint32_t*)(__data_start + 21644692))
 #define DAT_01ae3690 (*(uint32_t*)(__data_start + 21644944))
+#define DAT_01ae61e0 (*(uint32_t*)(__data_start + 21656032))
 #define DAT_01caf4a2 (*(uint32_t*)(__data_start + 23528610))
 #define DAT_01caf4d4 (*(uint32_t*)(__data_start + 23528660))
 #define DAT_01caf4d8 (*(uint32_t*)(__data_start + 23528664))
+#define DAT_01cb14c2 (*(uint32_t*)(__data_start + 23536834))
 #define DAT_01cb1500 (*(uint32_t*)(__data_start + 23536896))
 #define DAT_01cb2a20 (*(uint32_t*)(__data_start + 23542304))
 #define DAT_01cb3440 (*(uint32_t*)(__data_start + 23544896))
@@ -50,16 +77,26 @@
 #define DAT_0345b280 (*(uint32_t*)(__data_start + 48349824))
 #define DAT_0345b284 (*(uint32_t*)(__data_start + 48349828))
 #define DAT_0345b288 (*(uint32_t*)(__data_start + 48349832))
+#define DAT_0345b290 (*(uint32_t*)(__data_start + 48349840))
+#define DAT_0345b294 (*(uint32_t*)(__data_start + 48349844))
+#define DAT_0345b298 (*(uint32_t*)(__data_start + 48349848))
+#define DAT_0345b2a8 (*(uint32_t*)(__data_start + 48349864))
 #define DAT_0345bd10 (*(uint32_t*)(__data_start + 48352528))
 #define DAT_0345bd20 (*(uint32_t*)(__data_start + 48352544))
 #define DAT_0345bd24 (*(uint32_t*)(__data_start + 48352548))
+#define DAT_0345bd28 (*(uint32_t*)(__data_start + 48352552))
+#define DAT_0345bd38 (*(uint32_t*)(__data_start + 48352568))
+#define DAT_03656878 (*(uint32_t*)(__data_start + 50428024))
 #define DAT_0365b988 (*(uint32_t*)(__data_start + 50448776))
+extern uint8_t PTR_DAT_00646ff0[4096];
 #define _DAT_006a0568 (*(uint32_t*)(__data_start + 398696))
 #define _DAT_00bf7748 (*(uint32_t*)(__data_start + 5998408))
 #define _DAT_00bf7764 (*(uint32_t*)(__data_start + 5998436))
 #define _DAT_01ae2e24 (*(uint32_t*)(__data_start + 21642788))
 #define _DAT_01ae35d8 (*(uint32_t*)(__data_start + 21644760))
 #define _DAT_01ae3634 (*(uint32_t*)(__data_start + 21644852))
+#define _DAT_01cb14c4 (*(uint32_t*)(__data_start + 23536836))
+#define _DAT_01cb14c6 (*(uint32_t*)(__data_start + 23536838))
 #define _DAT_034155c0 (*(uint32_t*)(__data_start + 48063936))
 #define _DAT_034155ca (*(uint32_t*)(__data_start + 48063946))
 #define _DAT_034155d8 (*(uint32_t*)(__data_start + 48063960))
@@ -68,8 +105,13 @@
 #include "dat_overrides.h"
 
 /* === Game functions (compiled from decompiled source) === */
+extern void FUN_004086e0__render_prep(void);
 extern void FUN_0040ef60__matrix_translate(float param_1,float param_2,float param_3);
 extern void FUN_004224d0__matrix_scale(float param_1,float param_2,float param_3);
+extern void FUN_0042ca55__sprite_draw(char param_1,uint32_t param_2,float param_3,uint32_t param_4,
+                 uint32_t param_5,float param_6,int param_7,int param_8);
+extern void FUN_00442ce1__input_poll(void);
+extern void FUN_0044ae55__title_anim_dispatch(int param_1);
 extern void FUN_0044af3d__title_init(void);
 extern void FUN_0044af8d__title_anim_setup(void);
 extern void FUN_0044b042__title_display_loop(void);
@@ -84,10 +126,16 @@ extern void FUN_004cd19e__sprite_load(int param_1);
 extern void FUN_004cd25c__sprite_init(void);
 extern void FUN_004cd542__anim_schedule(void);
 extern void FUN_004cda9f__set_fade_mode(uint16_t param_1);
+extern void FUN_005cc380__d3d_begin(void);
+extern void FUN_005cc4c6__d3d_submit(uint param_1,uint param_2,uint param_3,int param_4);
 
 /* === Function name aliases === */
+#define FUN_004086e0 FUN_004086e0__render_prep
 #define FUN_0040ef60 FUN_0040ef60__matrix_translate
 #define FUN_004224d0 FUN_004224d0__matrix_scale
+#define FUN_0042ca55 FUN_0042ca55__sprite_draw
+#define FUN_00442ce1 FUN_00442ce1__input_poll
+#define FUN_0044ae55 FUN_0044ae55__title_anim_dispatch
 #define FUN_0044af3d FUN_0044af3d__title_init
 #define FUN_0044af8d FUN_0044af8d__title_anim_setup
 #define FUN_0044b042 FUN_0044b042__title_display_loop
@@ -102,10 +150,16 @@ extern void FUN_004cda9f__set_fade_mode(uint16_t param_1);
 #define FUN_004cd25c FUN_004cd25c__sprite_init
 #define FUN_004cd542 FUN_004cd542__anim_schedule
 #define FUN_004cda9f FUN_004cda9f__set_fade_mode
+#define FUN_005cc380 FUN_005cc380__d3d_begin
+#define FUN_005cc4c6 FUN_005cc4c6__d3d_submit
 
 /* === Stub declarations (called but not yet translated) === */
-extern void FUN_004086e0(void);
-extern int FUN_0044ae55(int a0);
+extern int FUN_0042c999(int a0, int a1, int a2);
+extern void FUN_00442f3c(void);
+extern void FUN_00443074(void);
+extern void FUN_00443250(void);
+extern void FUN_0044370b(void);
+extern void FUN_00443953(void);
 extern void FUN_0046270d(void);
 extern void FUN_00480f10(void);
 extern void FUN_0049f82c(void);
@@ -114,16 +168,22 @@ extern void FUN_0049fb9b(void);
 extern int FUN_004a38a0(int a0);
 extern void FUN_004a6b68(void);
 extern int FUN_004a6c0a(int a0);
+extern int FUN_004a6f70(int a0, int a1);
 extern int FUN_004cd0a0(int a0, int a1, int a2);
 extern void FUN_004cd2bc(void);
 extern int FUN_004cd8c3(int a0, int a1);
 extern int FUN_004d04f8(int a0);
 extern void FUN_004d53ff(void);
 extern void FUN_0051456b(void);
+extern void FUN_0056207a(void);
 extern void FUN_00589923(void);
 extern int FUN_00597311(int a0);
 extern int FUN_00597365(int a0);
 extern int FUN_005973a0(int a0);
 extern void FUN_005c017d(void);
+extern int FUN_005c45e0(int a0);
+extern void FUN_005dde70(void);
+extern int FUN_005e03a0(int a0, int a1, int a2);
+extern int FUN_005e6230(int a0);
 
 #endif
