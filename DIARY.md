@@ -1849,3 +1849,115 @@ populated by the init functions. Some references (like `DAT_007e7c58`) are at
 addresses past the initialized .data region and must be set up at runtime. We
 must call all init functions in the correct order.
 
+
+---
+
+## Entry 18 — Lessons from Wiring the State Machine
+
+**Date:** 2026-07-06
+
+### The title screen is a 24-sub-state machine
+
+State 1 (the title screen) doesn't just display an image. It dispatches through
+24 sub-states via `PTR_FUN_005fb238` (.rdata), each with a handler function:
+
+- Sub-states 0-4: Initialize sprite system, transform slots, fade engine
+- Sub-states 5-7: Load assets, handle fade-in
+- Sub-state 8: Copy animation keyframes to render slots
+- Sub-state 9: Main display loop — runs for ~575 frames, calls
+  `FUN_0044ae55` each frame which iterates sprite slots and submits
+  D3D execute buffers
+- Sub-states 10-31: Attract mode, sound, options transitions, loop back
+
+The complete state progression is 0→1→2→3→4, where:
+- 0 = startup (auto-advances to 1)
+- 1 = title screen (waits for Start press)
+- 2 = transition (auto-advances to 3 immediately)
+- 3 = menu/mode select (auto-advances to 4)
+- 4 = in-game (stays here)
+
+### The Ghidra DAT_ naming convention
+
+Ghidra names data globals as `DAT_XXXXXXXX` where `XXXXXXXX` is the **offset
+from the start of the data section** (.data VA 0x0063F000), NOT a virtual
+address. This caused multiple bugs:
+
+1. `DAT_01ae353c` at offset 0x01AE353C — when mistakenly treated as a VA
+   (0x01AE353C - 0x0063F000), the offset becomes negative, reading garbage
+2. Hand-translated code like `*(uint8_t*)(__data_start + (0x01AE2014 - 0x0063F000))`
+   reads BEFORE __data_start — the correct form is just `__data_start + 0x01AE2014`
+3. The gen_game.py script must treat ALL hex values from DAT_ names as direct
+   offsets, never subtracting 0x0063F000
+
+### State advancement requires initialized player slots
+
+The title screen won't advance unless:
+1. `DAT_03415608` (player slot count) is at least 1
+2. At least one player slot at `DAT_01ae2014 + slot * 0x380` has value 0x20,
+   0x22, or 0x23 (meaning "player present")
+3. `DAT_01ae353c` (attract mode / "Start pressed" flag) is set to 2
+
+All three are in BSS and were zero at startup because our stubbed init functions
+never populate them. Setting them manually unblocked the state machine.
+
+### The jump tables are in .rdata, not .data
+
+`PTR_FUN_005fe5e0` (main state dispatch) and `PTR_FUN_005fb238` (sub-state
+dispatch) are both in the `.rdata` section (read-only data, VA 0x005F5000+).
+These tables contain 32-bit function pointers — on a 64-bit build, reading them
+as `void**` reads two entries at once. Must use `uint32_t*` access.
+
+### The TEXB format is 4-bit byte-interleaved
+
+Not 8-bit as the diary guessed in Entry 2. `FUN_00510ecb` reveals:
+1. Raw file is byte-interleaved: even bytes → bottom half of atlas,
+   odd bytes → top half
+2. After deinterleave, each byte splits into two 4-bit nibbles
+3. Produces a 2048×1024 atlas at 4 bits per pixel (16-color palette)
+4. The 16-color palette is somewhere in the data section, still unfound
+
+### The rendering pipeline is D3D3 execute buffers
+
+The game doesn't use DDraw `Blt` for 2D rendering. It builds D3D execute
+buffer instruction streams with opcodes and submits them to `IDirect3DDevice::Execute()`.
+The execute buffer chain is `FUN_005cc380` → `FUN_005cc4c6` → `FUN_005e03a0`
+(a 1400-line software triangle rasterizer).
+
+Wine supports D3D3 execute buffers natively — our test confirmed the full
+pipeline works: QueryInterface → FindDevice → CreateSurface → Viewport →
+ExecuteBuffer → Lock/Unlock → Execute.
+
+### The host/game boundary is at ~0x005C0000
+
+4,162 functions fall into three clean bands by address:
+- 0x00401000-0x005BFFFF: ~3,500 game engine functions
+- 0x005C0000-0x005CFFFF: ~200 host layer (Win32/MFC)
+- 0x005E0000-0x005F4E38: ~210 CRT/thunks
+
+The boundary function is `FUN_005c5c7a` — the real WinMain body. The host
+calls ~20 game init functions then ~5 per-frame tick functions. The game engine
+has no awareness of `HWND` or message loops.
+
+### What's working
+
+- 23 compiled game functions + 31 stubs, zero compile errors
+- State machine: 0→1→2→3→4 with auto-advance or keyboard trigger
+- Windowed DDraw mode with GetAsyncKeyState input
+- Data section loaded at runtime (3.9MB init + BSS)
+- D3D3 execute buffer pipeline confirmed via Wine
+- TEXB texture atlas decoded and viewable
+- SDL2 native Linux binary (no Wine) compiles and runs
+- Full build pipeline: `make sdl` or `make winelib`
+
+### What's next
+
+1. **Translate D3D execute buffer → DirectDraw Blt** (Phase 4 from Entry 17
+   plan) — the biggest remaining piece. This replaces the 1400-line software
+   rasterizer with DirectDraw surface blits from the TEXB texture atlas.
+2. **Wire the sub-state rendering** — the `title_anim_dispatch` function pointer
+   calls need to dispatch to compiled sprite functions.
+3. **Find the 16-color palette** — the TEXB atlas uses 4-bit indices into a
+   16-entry palette somewhere in the data section.
+4. **Wire real keyboard input** — map SDL/DInput to the game's input globals
+   so the user can control the game naturally.
+
