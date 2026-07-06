@@ -2050,3 +2050,73 @@ MAME Model 2 driver authors: R. Belmont, Olivier Galibert, ElSemi,
 Angelo Salese, Matthew Daniels. The hardware reverse engineering was
 originally done by ElSemi.
 
+
+---
+
+## Entry 20 — Data Section Cartography
+
+**Date:** 2026-07-06
+
+### The .data section organized by content type
+
+A 64KB-block analysis of the 3.9 MB initialized .data section reveals clear
+zones:
+
+| VA Range | Type | Content |
+|---|---|---|
+| 0x0063F000-0x006AF000 | **Strings** | Heavy ASCII (10K-33K chars/block): CD audio, MCI, config, UI labels, SDE events, weapon/robot names, input mapping, CRT debug messages, asset filenames |
+| 0x006BF000-0x0070F000 | **Zeros/Sparse** | Mostly BSS-like padding with scattered data. Contains some pointers and small lookup tables |
+| 0x0071F000-0x0092F000 | **Strings** | More ASCII — continued game string data. Screen/UI text, menu strings, network messages, robot descriptions |
+| 0x0093F000-0x009AF000 | **Sparse strings** | Declining string density, increasing zero fill. Transition zone |
+| 0x009BF000-0x009CF000 | **Dense mixed** | 256 unique bytes, heavy ASCII with mixed binary — likely sprite/font glyph bitmaps |
+| 0x009CF000-0x009FF000 | **Sparse** | Declining data density, approaching BSS boundary |
+
+The entire initialized data section is **predominantly string data**. Out of
+~3.9 MB, roughly 2.5-3 MB is ASCII strings — config, UI, weapon/robot names,
+CD audio commands, CRT debug messages, MCI command strings, input mapping keys,
+network protocol strings, and filenames. The game's "data section" is less a
+database of numeric constants and more a localization table + config dump.
+
+### Font glyph table (DAT_006471e0)
+
+At offset 0x81E0: an array of 96 pointers (characters 0x20-0x7F). Each pointer
+is a 4-byte VA pointing to glyph data elsewhere in .data. Example entries:
+
+| Char | VA | Glyph data (first 8 bytes) |
+|---|---|---|
+| `#` | 0x007E6950 | `55039d0055039d00` |
+| `$` | 0x007E6A20 | `d04000003f08c070` |
+| `%` | 0x0079F56C | `890cdc3e000000bf` |
+| `'` | 0x007E8060 | `d04000003f08c070` |
+| `.` | 0x0079CC5C | `556f5ebe172c9240` |
+
+The glyph data appears to be small structures (possibly width/height + pixel
+offset or encoded bitmap data). Characters like `$`, `'`, and `0` share
+identical glyph data (`d04000003f08c070`), suggesting these are blank/space
+glyphs or share the same default entry.
+
+### Float3 arrays
+
+Found 78,258 candidate locations where 3-float tuples appear consecutively.
+The highest-scoring region is at offset 0x9C18 with values cycling through
+{2.322, 2.337, 2.329} — likely a vertex array or normal vector table.
+
+### What's NOT in .data
+
+- **Float constants**: Very few. Most "floats" in .data are integers
+  mis-cast. The real float data lives in .rdata (the 37 float regions
+  documented in Entry 6).
+- **The 16-color TEXB palette**: Not found as a 32-byte 5-5-5 RGB block
+  in either .data or .rdata. Might be generated programmatically or
+  stored in a non-obvious encoding.
+- **Large lookup tables**: The game appears to use generated/calculated
+  values rather than pre-computed lookup tables. This matches the arcade
+  Model 2 architecture where many values come from log/coefficient RAM.
+
+### From the MAME driver
+
+The arcade uses 5-5-5 RGB format for palettes. The scan found 148,088
+candidates in .rdata — the thresholds need refinement. The game likely
+stores its palette as 16-bit words, but the encoding might differ from
+the arcade (PC uses a different color depth path through Windows GDI/DDraw).
+
