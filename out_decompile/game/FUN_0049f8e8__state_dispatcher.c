@@ -30,6 +30,9 @@ void FUN_0049f8e8__state_dispatcher(void)
     case 1: FUN_0044b38c__title_screen_dispatch(); break;
     case 2: /* transition — auto-advance */
             DAT_01ae3594 = 3; DAT_01ae3690 = 0; break;
+    case 3: /* menu — auto-advance */
+            DAT_01ae3594 = 4; DAT_01ae3690 = 0; break;
+    case 4: /* in-game — stay here */ break;
     default:
             DAT_01ae3594 = 1; DAT_01ae3690 = 0; break;
     }

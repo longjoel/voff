@@ -691,7 +691,7 @@ static void game_frame(void)
     FUN_004086e0__render_prep();          /* Render setup */
     FUN_0049f8e8__state_dispatcher();     /* State machine */
 
-    /* GetAsyncKeyState fallback: works even when DDraw eats window messages */
+    /* GetAsyncKeyState for Enter: advances past title screen */
     {
         static int enter_was_down = 0;
         if (GetAsyncKeyState(VK_RETURN) & 0x8000) {
@@ -844,6 +844,15 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
     LOG("WindowClass ptr = %p", (void*)(uintptr_t)DAT(uint32_t, 0x006BF544));
     LOG("WindowTitle ptr = %p", (void*)(uintptr_t)DAT(uint32_t, 0x006BF548));
     LOG("--- End Diagnostics ---");
+
+    /* Fix: DAT_03415608 must be >= 1 and at least one player slot
+     * must be active (0x20) for the title screen to advance. */
+    if (DAT(int32_t, 0x0063F000 + 0x03415608) < 1) {
+        DAT(int32_t, 0x0063F000 + 0x03415608) = 2;
+        /* Mark player slot 0 as active (0x20 = player present) */
+        DAT(uint8_t, 0x0063F000 + 0x01AE2014) = 0x20;
+        LOG("Set DAT_03415608=2, player slot 0 = 0x20");
+    }
 
     /* Quick check: read jump table from rdata */
     {

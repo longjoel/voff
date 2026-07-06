@@ -9,12 +9,6 @@ void FUN_0044b38c__title_screen_dispatch(void)
   uint32_t local_c;
 
   if (DAT_01ae353c != 2) {
-    static int log_count = 0;
-    if (log_count == 0) {
-      LOG("title_dispatch: DAT_01ae353c=%d (need 2 to advance)", (int)DAT_01ae353c);
-      log_count = 60;
-    }
-    log_count--;
     if (DAT_01caf4d4 == 0) {
       /* DAT_01ed5e1e._2_2_ means bits 16-31 of the uint32_t */
       uint16_t subfield = (uint16_t)(DAT_01ed5e1e >> 16);
@@ -61,8 +55,6 @@ void FUN_0044b38c__title_screen_dispatch(void)
       DAT_01ae3690 = (DAT_01ae3690 + 1) & 0x1f;
       break;
     }
-  }
-
   if (DAT_01ae353c == 2) {
     local_c = (uint32_t)DAT_03415608;
     do {
@@ -71,7 +63,7 @@ void FUN_0044b38c__title_screen_dispatch(void)
         return;
       }
       {
-        uint8_t slot = *(uint8_t*)(__data_start + (0x01AE2014 - 0x0063F000) + iVar1 * 0x380);
+        uint8_t slot = *(uint8_t*)(__data_start + 0x01AE2014 + iVar1 * 0x380);
         if (slot != 0x20 && slot != 0x23 && slot != 0x22) {
           local_c = (uint32_t)iVar1;
         } else {
@@ -85,6 +77,7 @@ void FUN_0044b38c__title_screen_dispatch(void)
     DAT_034155e4 = (uint32_t)0xffffffff;
     DAT_01ae3594 = DAT_01ae3594 + 1;
     DAT_01ae3690 = 0;
+    DAT_01ae353c = 0;  /* clear after advancing to prevent re-trigger */
   }
   else if ((((DAT_01ed5ec4 >> 4 & 1) != 0) && (DAT_006bc94c == 0)) &&
           ((DAT_01ae3690 == 0 || (4 < (int)DAT_01ae3690)))) {
