@@ -784,8 +784,9 @@ static void game_frame(void)
 
     /* State machine logging every 60 frames */
     if (frame % 60 == 0) {
-        LOG("STATE: game=%d sub=%d cd_mode=%d",
-            (int)g_GameState, (int)g_GameSubState, (int)g_CDAudioMode);
+        LOG("STATE: game=%d sub=%d cd=%d mode=%d",
+            (int)g_GameState, (int)g_GameSubState, (int)g_CDAudioMode,
+            (int)DAT(int32_t, 0x0063F000 + 0x01AE353C));
     }
 
     /* Software render for visual feedback */
