@@ -46,10 +46,11 @@
 
   <label>Palette mode</label>
   <select id="palMode">
-    <option value="gray">Grayscale (index → gray)</option>
+    <option value="gray">Grayscale (index -> gray)</option>
     <option value="inv">Inverted grayscale</option>
     <option value="heat">Heatmap (0=black, 255=white)</option>
     <option value="direct">Raw 16-bit (treat pairs as RGB565)</option>
+    <option value="voff4">VOFF 4-bit (deinterleave + nibble split)</option>
   </select>
 
   <label>Display scale</label>
@@ -99,6 +100,39 @@ function handleFile() {
   reader.readAsArrayBuffer(file);
 }
 
+function processVoff4(fileData, w, h) {
+  // Step 1: Deinterleave. File is byte-interleaved: even bytes -> bottom half, odd -> top half.
+  // Source: 1024x1024 bytes interleaved as byte pairs
+  // After deinterleave: 1024x1024 bytes, top half from odd bytes, bottom from even
+  
+  const size = w * h;
+  const deinterleaved = new Uint8Array(size);
+  
+  for (let row = 0; row < h; row++) {
+    for (let col = 0; col < w; col += 2) {
+      const srcOff = row * w + col;
+      const oddByte  = fileData[srcOff + 1];  // odd position -> top half
+      const evenByte = fileData[srcOff];      // even position -> bottom half
+      
+      // Odd bytes go to row*1024 + col/2 (first 512 rows)
+      deinterleaved[row * w + col/2] = oddByte;
+      // Even bytes go to (2*row+1)*512 + col/2 (second 512 rows)
+      deinterleaved[(2*row + 1) * (w/2) + col/2] = evenByte;
+    }
+  }
+  
+  // Step 2: Convert to grayscale for display.
+  // Each byte in the deinterleaved image is a pair of 4-bit nibbles
+  // forming a 2048x1024 4-bit image. We display as 1024x1024 grayscale.
+  
+  const out = new Uint8Array(size * 4);
+  for (let i = 0; i < size; i++) {
+    const b = deinterleaved[i];
+    out[i*4] = b; out[i*4+1] = b; out[i*4+2] = b; out[i*4+3] = 255;
+  }
+  return { data: out, width: w, height: h };
+}
+
 function getPaletteFn(mode) {
   switch(mode) {
     case 'gray': return idx => { let v=idx; return [v,v,v]; };
@@ -110,7 +144,8 @@ function getPaletteFn(mode) {
       let b = Math.min(1, Math.max(0, v*3-2));
       return [r*255, g*255, b*255];
     };
-    case 'direct': return idx => [idx, idx, idx]; // handled specially
+    case 'direct': return idx => [idx, idx, idx];
+    case 'voff4': return null; // handled specially
     default: return idx => [idx, idx, idx];
   }
 }
@@ -132,6 +167,43 @@ function render() {
 
   const texSize = stride * h;
   let rendered = 0;
+
+  if (palMode === 'voff4') {
+    const result = processVoff4(fileData, 1024, 1024);
+    const c1 = document.createElement('canvas');
+    c1.width = 1024; c1.height = 1024;
+    c1.style.width = (1024 * scale) + 'px';
+    c1.style.height = (1024 * scale) + 'px';
+    c1.title = 'VOFF4: deinterleaved 1024x1024';
+    const cx1 = c1.getContext('2d');
+    const im1 = cx1.createImageData(1024, 1024);
+    im1.data.set(result.data);
+    cx1.putImageData(im1, 0, 0);
+    canvasWrap.appendChild(c1);
+    
+    const c2 = document.createElement('canvas');
+    c2.width = 2048; c2.height = 1024;
+    c2.style.width = (2048 * Math.max(1, scale/2)) + 'px';
+    c2.style.height = (1024 * Math.max(1, scale/2)) + 'px';
+    c2.title = 'VOFF4: nibble-expanded 2048x1024';
+    const cx2 = c2.getContext('2d');
+    const im2 = cx2.createImageData(2048, 1024);
+    for (let i = 0; i < 1024*1024; i++) {
+      const b = result.data[i*4];
+      const hi = (b >> 4) & 0xF;
+      const lo = b & 0xF;
+      const col = (i % 1024) * 2;
+      const row = Math.floor(i / 1024);
+      const off = (row * 2048 + col) * 4;
+      const vHi = hi * 17, vLo = lo * 17;
+      im2.data[off]=vLo; im2.data[off+1]=vLo; im2.data[off+2]=vLo; im2.data[off+3]=255;
+      im2.data[off+4]=vHi; im2.data[off+5]=vHi; im2.data[off+6]=vHi; im2.data[off+7]=255;
+    }
+    cx2.putImageData(im2, 0, 0);
+    canvasWrap.appendChild(c2);
+    statusEl.textContent = 'VOFF 4-bit: deinterleaved 1024x1024 + nibble-expanded 2048x1024';
+    return;
+  }
 
   for (let i = 0; i < count; i++) {
     const dataOffset = offset + i * texSize;
