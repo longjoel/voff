@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VOFF Texture Explorer</title>
+<style>
+  body { margin:0; background:#1a1a2e; color:#eee; font:14px monospace; display:flex; }
+  #panel { width:320px; padding:16px; background:#16213e; overflow-y:auto; height:100vh; box-sizing:border-box; }
+  #panel label { display:block; margin-top:10px; font-size:12px; color:#aab; }
+  #panel input, #panel select { width:100%; padding:6px; margin-top:2px; background:#0f3460; color:#eee; border:1px solid #533483; border-radius:4px; font:13px monospace; }
+  #panel input[type=range] { padding:0; }
+  #panel button { width:100%; margin-top:12px; padding:8px; background:#533483; color:#fff; border:none; border-radius:4px; cursor:pointer; font:13px monospace; }
+  #panel button:hover { background:#6b42b4; }
+  #panel .info { font-size:11px; color:#889; margin-top:4px; }
+  #canvas-wrap { flex:1; overflow:auto; padding:16px; display:flex; flex-wrap:wrap; gap:4px; align-content:flex-start; }
+  canvas { image-rendering:pixelated; border:1px solid #333; }
+  .label { position:absolute; background:#0008; color:#fff; font-size:10px; padding:2px 4px; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <h2>VOFF Texture Explorer</h2>
+  <p class="info">Drop a TEXB*.IMG or BSEL*.BIN file, or click to browse.</p>
+
+  <input type="file" id="fileInput" accept=".IMG,.BIN,.img,.bin">
+
+  <label>Data offset (hex)</label>
+  <input type="text" id="offset" value="0x00000">
+
+  <label>Texture width</label>
+  <input type="number" id="texW" value="256" min="8" max="1024">
+
+  <label>Texture height</label>
+  <input type="number" id="texH" value="256" min="8" max="1024">
+
+  <label>Stride (0 = width)</label>
+  <input type="number" id="stride" value="0" min="0" max="2048">
+  <p class="info">Stride > width for padded rows. 0 = use width.</p>
+
+  <label>Texture count</label>
+  <input type="number" id="count" value="16" min="1" max="256">
+
+  <label>Columns in grid</label>
+  <input type="number" id="cols" value="4" min="1" max="16">
+
+  <label>Palette mode</label>
+  <select id="palMode">
+    <option value="gray">Grayscale (index → gray)</option>
+    <option value="inv">Inverted grayscale</option>
+    <option value="heat">Heatmap (0=black, 255=white)</option>
+    <option value="direct">Raw 16-bit (treat pairs as RGB565)</option>
+  </select>
+
+  <label>Display scale</label>
+  <input type="range" id="scale" min="1" max="8" value="2">
+
+  <button id="btnRefresh">Refresh</button>
+  <button id="btnScan">Auto-scan strides</button>
+
+  <hr>
+  <p class="info" id="status">Ready. Drop a file to begin.</p>
+  <p class="info" id="fileInfo"></p>
+</div>
+
+<div id="canvas-wrap"></div>
+
+<script>
+let fileData = null;
+let fileName = '';
+
+const fileInput = document.getElementById('fileInput');
+const canvasWrap = document.getElementById('canvas-wrap');
+const statusEl = document.getElementById('status');
+const fileInfoEl = document.getElementById('fileInfo');
+
+fileInput.addEventListener('change', handleFile);
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (f) { fileInput.files = e.dataTransfer.files; handleFile(); }
+});
+
+document.getElementById('btnRefresh').addEventListener('click', render);
+document.getElementById('btnScan').addEventListener('click', autoScan);
+
+function handleFile() {
+  const file = fileInput.files[0];
+  if (!file) return;
+  fileName = file.name;
+  const reader = new FileReader();
+  reader.onload = () => {
+    fileData = new Uint8Array(reader.result);
+    fileInfoEl.textContent = `${fileName}: ${fileData.length.toLocaleString()} bytes`;
+    statusEl.textContent = `Loaded ${fileName}. Press Refresh.`;
+    render();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function getPaletteFn(mode) {
+  switch(mode) {
+    case 'gray': return idx => { let v=idx; return [v,v,v]; };
+    case 'inv':  return idx => { let v=255-idx; return [v,v,v]; };
+    case 'heat': return idx => {
+      let v = idx / 255;
+      let r = Math.min(1, v*3);
+      let g = Math.min(1, Math.max(0, v*3-1));
+      let b = Math.min(1, Math.max(0, v*3-2));
+      return [r*255, g*255, b*255];
+    };
+    case 'direct': return idx => [idx, idx, idx]; // handled specially
+    default: return idx => [idx, idx, idx];
+  }
+}
+
+function render() {
+  if (!fileData) return;
+  canvasWrap.innerHTML = '';
+
+  const offset = parseInt(document.getElementById('offset').value);
+  const w = parseInt(document.getElementById('texW').value);
+  const h = parseInt(document.getElementById('texH').value);
+  let stride = parseInt(document.getElementById('stride').value);
+  if (stride === 0) stride = w;
+  const count = parseInt(document.getElementById('count').value);
+  const cols = parseInt(document.getElementById('cols').value);
+  const scale = parseInt(document.getElementById('scale').value);
+  const palMode = document.getElementById('palMode').value;
+  const paletteFn = getPaletteFn(palMode);
+
+  const texSize = stride * h;
+  let rendered = 0;
+
+  for (let i = 0; i < count; i++) {
+    const dataOffset = offset + i * texSize;
+    if (dataOffset + w * h > fileData.length) break;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.width = (w * scale) + 'px';
+    canvas.style.height = (h * scale) + 'px';
+    canvas.title = `Texture ${i} @ 0x${dataOffset.toString(16)} ${w}x${h} stride=${stride}`;
+
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(w, h);
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = fileData[dataOffset + y * stride + x];
+        const pixelOff = (y * w + x) * 4;
+        if (palMode === 'direct') {
+          // Raw 16-bit: pairs of bytes as RGB565
+          const lo = fileData[dataOffset + y * stride + x * 2];
+          const hi = fileData[dataOffset + y * stride + x * 2 + 1];
+          const val = (hi << 8) | lo;
+          img.data[pixelOff]   = ((val >> 11) & 0x1F) << 3;
+          img.data[pixelOff+1] = ((val >> 5)  & 0x3F) << 2;
+          img.data[pixelOff+2] = (val & 0x1F) << 3;
+        } else {
+          const [r, g, b] = paletteFn(idx);
+          img.data[pixelOff]   = r;
+          img.data[pixelOff+1] = g;
+          img.data[pixelOff+2] = b;
+        }
+        img.data[pixelOff+3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    canvasWrap.appendChild(canvas);
+    rendered++;
+  }
+
+  statusEl.textContent = `Rendered ${rendered} textures (${w}x${h}, stride=${stride}, offset=0x${offset.toString(16)})`;
+}
+
+function autoScan() {
+  if (!fileData) return;
+  canvasWrap.innerHTML = '';
+
+  const offset = parseInt(document.getElementById('offset').value);
+  const sizes = [64, 80, 96, 128, 160, 192, 200, 256, 320, 384, 512];
+  const scale = 1;
+
+  for (const w of sizes) {
+    for (const h of sizes) {
+      if (w * h > 256 * 256) continue;
+      if (offset + w * h * 4 > fileData.length) continue;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+
+      const ctx = canvas.getContext('2d');
+      const img = ctx.createImageData(w, h);
+
+      let unique = new Set();
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = fileData[offset + y * w + x];
+          unique.add(idx);
+          const v = idx;
+          const pixelOff = (y * w + x) * 4;
+          img.data[pixelOff] = v;
+          img.data[pixelOff+1] = v;
+          img.data[pixelOff+2] = v;
+          img.data[pixelOff+3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+
+      const wrap = document.createElement('div');
+      wrap.style.position = 'relative';
+      wrap.style.display = 'inline-block';
+      wrap.style.margin = '2px';
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.textContent = `${w}x${h} u:${unique.size}`;
+      wrap.appendChild(canvas);
+      wrap.appendChild(label);
+
+      // Highlight: if unique bytes is "interesting" (between 16 and 250)
+      if (unique.size > 16 && unique.size < 250) {
+        canvas.style.border = '2px solid #0f0';
+      }
+
+      canvasWrap.appendChild(wrap);
+    }
+  }
+
+  statusEl.textContent = `Auto-scan: all sizes from offset 0x${offset.toString(16)}. Green borders = interesting content.`;
+}
+</script>
+</body>
+</html>
