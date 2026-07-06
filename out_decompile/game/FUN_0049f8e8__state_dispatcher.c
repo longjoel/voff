@@ -23,7 +23,17 @@ void FUN_0049f8e8__state_dispatcher(void)
     DAT_01ae3690 = 0;
   }
   else {
-    /* Call state handler via function pointer — stubbed (can't call original VA) */
+    /* Dispatch to compiled handler functions */
+    int st = (int)DAT_01ae3594 & 0xf;
+    LOG("state_dispatcher: state=%d calling handler", st);
+    switch (st) {
+    case 0: FUN_00476620__state0_handler(); break;
+    case 1: FUN_0044b38c__title_screen_dispatch(); break;
+    case 2: /* transition — auto-advance */
+            DAT_01ae3594 = 3; DAT_01ae3690 = 0; break;
+    default:
+            DAT_01ae3594 = 1; DAT_01ae3690 = 0; break;
+    }
     /* (*(void *)(&PTR_FUN_005fe5e0)[DAT_01ae3594 & 0xf])(); */
     if ((int)DAT_01ae3594 < 0) {
       FUN_0049fb9b();

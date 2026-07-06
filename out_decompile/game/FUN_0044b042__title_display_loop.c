@@ -10,7 +10,8 @@ void FUN_0044b042__title_display_loop(void)
   
   iVar1 = DAT_0345b280;
   while (DAT_0345bd10 == 0) {
-    FUN_004a6c0a(iVar1);
+    FUN_004a6c0a(iVar1);  /* stubbed — would load asset data */
+    break;  /* prevent infinite loop since FUN_004a6c0a is stubbed */
   }
   if (DAT_0345bd10 < 1) {
     DAT_0345bd10 = DAT_0345bd10 + 1;

@@ -88,7 +88,9 @@ if data_globals:
             m = re.match(r'DAT_([0-9a-fA-F]{8})', clean)
             if m:
                 va = int(m.group(1), 16)
-                offset = va - 0x0063F000
+                # Ghidra DAT_ names use offsets from data section start.
+                # The name DAT_01ae3594 means __data_start[0x01AE3594].
+                offset = va
                 header_lines.append(f"#define {g} (*(uint32_t*)(__data_start + {offset}))\n")
             else:
                 header_lines.append(f"extern uint32_t {g};\n")

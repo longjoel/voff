@@ -31,9 +31,30 @@ void FUN_0044b38c__title_screen_dispatch(void)
     DAT_01ae3690 = 1;
   }
   else {
-    /* Call the sub-state handler. In the real game this calls through a
-     * function pointer. We can't call the original address, so we skip it. */
-    /* (*pcVar2)(); */
+    /* Dispatch sub-state to compiled handler functions */
+    int sub = (int)DAT_01ae3690 & 0x1f;
+    uint32_t handler_va = *(uint32_t*)(__rdata_start + (0x005FB238 - 0x005F5000) + sub * 4);
+    static int last_sub = -1;
+    if (sub != last_sub) {
+      LOG("title_dispatch: substate %d -> %d (handler=0x%08X)",
+          last_sub, sub, handler_va);
+      last_sub = sub;
+    }
+    switch (sub) {
+    case 0: FUN_0044af3d__title_init(); break;
+    case 1: FUN_0044b184__title_delay1(); break;
+    case 2: FUN_0044b195__title_delay2(); break;
+    case 3: FUN_0044b1a6__title_setup(); break;
+    case 4: /* FUN_0044b1ef */ DAT_01ae3690 = 5; break;  /* skip: auto-advance */
+    case 5: /* FUN_00545d20 */ DAT_01ae3690 = 6; break;
+    case 6: /* FUN_00545dfa */ DAT_01ae3690 = 7; break;
+    case 7: /* FUN_0054618b */ DAT_01ae3690 = 8; break;
+    case 8: FUN_0044af8d__title_anim_setup(); break;
+    case 9: FUN_0044b042__title_display_loop(); break;
+    default:
+      DAT_01ae3690 = (DAT_01ae3690 + 1) & 0x1f;
+      break;
+    }
   }
 
   if (DAT_01ae353c == 2) {

@@ -5,6 +5,7 @@
  */
 
 #include "voff_bridge.h"
+#include "game/game.h"
 
 /* ===============================================================
  * .data section: global variables used by game logic
@@ -185,174 +186,28 @@ static void init_unk_495a40(void) {
 }
 
 /* Forward declarations for tick functions that call each other */
-static void tick_title_screen(void);
-static void tick_state_dispatch(void);
 
 /* Render prep — original at 0x004086e0 */
-static void tick_render_prep(void) {
-    uint32_t *dst = (uint32_t *)DAT(void*, 0x0063F000 + 0x01AE61E0);
-    uint32_t a = DAT(uint32_t, 0x0063F000 + 0x006BF444);
-    uint32_t b = DAT(uint32_t, 0x0063F000 + 0x006BF448);
-    dst[0] = a; dst[1] = b; dst[2] = b; dst[3] = b;
-    dst[4] = a; dst[5] = b; dst[6] = b; dst[7] = b;
-    dst[8] = a;
-}
 
 /* Input processing — original at 0x00442ce1
  * Reads DirectInput device state. Key for title screen advancement.
  * The DInput device pointer is at DAT_006536cc.
  * For now: stub that fakes no input. We'll inject "press start" later.
  */
-static void tick_input(void) {
-    static int first_call = 1;
-    if (first_call) {
-        LOG("  tick_input: DInput device at %p (stubbed, no input read)",
-            (void*)(uintptr_t)DAT(void*, 0x0063F000 + 0x06536CC));
-        first_call = 0;
-    }
-}
 
 /* State dispatcher — original at 0x0049f8e8
  * Jump table at PTR_FUN_005fe5e0 indexed by g_GameState & 0xF.
  * The jump table contains VA pointers from the original binary.
  * We can't call those directly — instead we hardcode the dispatch.
  */
-static void tick_state_dispatch(void) {
-    int state = (int)g_GameState & 0xF;
-
-    switch (state) {
-    case 0:
-        LOG("  state_dispatch: state 0 -> 1 (splash screen)");
-        g_GameState = 1;
-        g_GameSubState = 0;
-        break;
-
-    case 1:
-        /* State 1: Opening cinematic / title sequence */
-        tick_title_screen();
-        break;
-
-    case 2:
-        /* State 2: Transition (calls FUN_004cda9f, advances immediately) */
-        LOG("  state_dispatch: state 2 -> 3 (transition)");
-        DAT(uint16_t, 0x0063F000 + 0x01CB1500) = 0;
-        g_GameState = 3;
-        g_GameSubState = 0;
-        break;
-
-    case 3:
-        /* State 3: Menu / mode select (FUN_004B1BFC) */
-        LOG("  state_dispatch: state 3 -> 4 (menu -> game)");
-        DAT(int32_t, 0x0063F000 + 0x01AE352C) = 0;
-        DAT(int32_t, 0x0063F000 + 0x01AE3590) = 0;
-        DAT(int32_t, 0x0063F000 + 0x00681808) = -1;
-        DAT(int32_t, 0x0063F000 + 0x01AE1FFC) = 0;
-        DAT(int32_t, 0x0063F000 + 0x00BF6F50) = 0;
-        DAT(int32_t, 0x0063F000 + 0x01AE362C) = 0;
-        DAT(int32_t, 0x0063F000 + 0x01AE368C) = 0;
-        DAT(int32_t, 0x0063F000 + 0x01AE2008) = 0;
-        DAT(int32_t, 0x0063F000 + 0x00BF6F48) = 0;
-        DAT(int32_t, 0x0063F000 + 0x01AE2000) = 0;
-        DAT(int16_t, 0x0063F000 + 0x01AE35E6) = 1;
-        DAT(void*,  0x0063F000 + 0x01AE0CB8) = (void*)(voff_data_ptr() + (0x01AE1840));
-        DAT(void*,  0x0063F000 + 0x01AE12B8) = (void*)(voff_data_ptr() + (0x01AE1C20));
-        g_GameState = 4;
-        g_GameSubState = 0;
-        break;
-
-    case 4:
-        /* State 4: In-game */
-        {
-            static int logged = 0;
-            if (!logged) {
-                LOG("  state_dispatch: entered IN-GAME (state 4)!");
-                logged = 1;
-            }
-        }
-        break;
-
-    default:
-        LOG("  state_dispatch: unhandled state %d, resetting to 1", state);
-        g_GameState = 1;
-        g_GameSubState = 0;
-        break;
-    }
-}
 
 /* Title screen sub-state dispatch
  * Jump table at PTR_FUN_005fb238 in .rdata section
  */
-static void tick_title_screen(void) {
-    int substate = (int)g_GameSubState & 0x1F;
-    static int last_substate = -1;
-    static int log_cooldown = 0;
-
-    if (substate != last_substate) {
-        LOG("  title: substate %d -> %d", last_substate, substate);
-        last_substate = substate;
-        log_cooldown = 0;
-    }
-
-    /* Get sub-state handler from .rdata jump table (32-bit pointers) */
-    uint32_t *jump_table = (uint32_t *)(__rdata_start + (0x005FB238 - 0x005F5000));
-    uint32_t handler_va = jump_table[substate];
-
-    if (log_cooldown == 0) {
-        LOG("  title: substate=%d handler=FUN_%08X", substate, handler_va);
-        log_cooldown = 60;
-    }
-    log_cooldown--;
-
-    /* Check for game mode 2 (attract mode / start pressed) */
-    int mode = DAT(int32_t, 0x0063F000 + 0x01AE353C);
-    if (mode == 2) {
-        LOG("  title: attract mode, advancing state!");
-
-        int num_players = DAT(int32_t, 0x0063F000 + 0x03415608);
-        int found = 0;
-        for (int i = num_players - 1; i >= 0; i--) {
-            uint8_t slot = DAT(uint8_t, 0x0063F000 + 0x01AE2014 + i * 0x380);
-            if (slot == 0x20 || slot == 0x22 || slot == 0x23) {
-                found = 1;
-                DAT(uint8_t, 0x0063F000 + 0x01CAF4A2) = (uint8_t)i;
-                break;
-            }
-        }
-        DAT(int32_t, 0x0063F000 + 0x034155E4) = -1;
-        g_GameState = g_GameState + 1;
-        g_GameSubState = 0;
-        LOG("  title: advanced to game=%d sub=%d (player_found=%d)",
-            (int)g_GameState, (int)g_GameSubState, found);
-        return;
-    }
-
-    /* Normal title screen — wait for input (ENTER = START, SPACE = menu) */
-    if (handler_va == 0) {
-        g_GameSubState = 1;
-    }
-    /* (sub-state stays at current value until user presses keys) */
-
-    /* Check for Start button (bit 4 of input register) */
-    int input_bits = DAT(int32_t, 0x0063F000 + 0x01ED5EC4);
-    if ((input_bits >> 4) & 1) {
-        if (g_CDAudioMode == 0 && (g_GameSubState == 0 || g_GameSubState > 4)) {
-            LOG("  title: START pressed (input=0x%08x)", input_bits);
-            DAT(int32_t, 0x0063F000 + 0x01AE3690) = 0x10;
-        }
-    }
-}
 
 /* Animation update — original at 0x0049fbc0 */
-static void tick_anim_update(void) {
-    /* DAT_01ae61e0 = &DAT_01ae6000; DAT_006bf440 = 0; */
-    DAT(void*, 0x0063F000 + 0x01AE61E0) = (void*)(voff_data_ptr() + (0x01AE6000));
-    DAT(int32_t, 0x0063F000 + 0x006BF440) = 0;
-}
 
 /* Frame sync / timing — original at 0x005c9f70 */
-static void tick_frame_sync(void) {
-    /* Reads timing values from data section. Stubbed for now. */
-}
 
 /* DDraw surface setup (GDI) — original at 0x005146c6 */
 static void init_gdi_surface(HWND hWnd) {
@@ -920,15 +775,12 @@ BOOL create_window(HINSTANCE hInstance, int nCmdShow)
 static void game_frame(void)
 {
     static int frame = 0;
-    static int force_advance_frame = 0;
     frame++;
 
-    /* Mode 0 tick — no CD audio (simplest path) */
-    tick_input();           /* FUN_00442ce1 — read input */
-    tick_anim_update();     /* FUN_0049fbc0 — animation */
-    tick_render_prep();     /* FUN_004086e0 — graphics setup */
-    tick_state_dispatch();  /* FUN_0049f8e8 — state machine */
-    tick_frame_sync();      /* FUN_005c9f70 — timing */
+    /* Real game tick functions — compiled from decompiled binary */
+    FUN_00442ce1__input_poll();           /* DInput — stubbed */
+    FUN_004086e0__render_prep();          /* Render setup */
+    FUN_0049f8e8__state_dispatcher();     /* State machine */
 
     /* State machine logging every 60 frames */
     if (frame % 60 == 0) {
@@ -936,7 +788,7 @@ static void game_frame(void)
             (int)g_GameState, (int)g_GameSubState, (int)g_CDAudioMode);
     }
 
-    /* Also do the software render pattern for visual feedback */
+    /* Software render for visual feedback */
     render_frame();
 }
 
@@ -1068,6 +920,14 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
     LOG("WindowClass ptr = %p", (void*)(uintptr_t)DAT(uint32_t, 0x006BF544));
     LOG("WindowTitle ptr = %p", (void*)(uintptr_t)DAT(uint32_t, 0x006BF548));
     LOG("--- End Diagnostics ---");
+
+    /* Quick check: read jump table from rdata */
+    {
+        uint32_t h0 = *(uint32_t*)(__rdata_start + (0x005FE5E0 - 0x005F5000));
+        LOG("rdata jump table[0] = 0x%08X (expect 0x00476620)", h0);
+        LOG("g_GameState=%d rdata=%p g_GameSubState=%d",
+            (int)g_GameState, (const void*)__rdata_start, (int)g_GameSubState);
+    }
 
     /* The real init sequence should have set these. Log what we got. */
     LOG("Post-init: g_GameState=%d g_GameSubState=%d g_IsActive=%d g_RenderFrame=%d",
