@@ -76,9 +76,290 @@
  * =============================================================== */
 
 /* === STUB FORWARD DECLARATIONS === */
-static int  stub_cdrom_detect(void) { return 1; }
-static void stub_game_init(void) { }
-static void stub_input_update(void) { }
+static int  cdrom_detect(void) {
+    LOG("  cdrom_detect: patched, return 1");
+    return 1;
+}
+
+/* ===============================================================
+ * INIT SEQUENCE FUNCTIONS — translated from original binary
+ * Called in exact order from FUN_005c5c7a after window creation.
+ * =============================================================== */
+
+static int init_system_check(void) {
+    LOG_ENTER();
+    LOG_EXIT1("OK");
+    return 1;
+}
+
+static void init_generic(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_post_window(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_dsound(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_game_state(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_misc1(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_resource_loading(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_game_data(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_frame_state(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static int init_thunk_47e600(void) {
+    LOG_ENTER();
+    LOG_EXIT1("OK");
+    return 1;
+}
+
+static int init_thunk_566fb0(void) {
+    LOG_ENTER();
+    LOG_EXIT1("OK");
+    return 1;
+}
+
+static void init_misc2(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_unk_444388(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_unk_40f43e(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_unk_5cc616(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_cd_audio(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_unk_501097(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_unk_5898e6(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+static void init_unk_495a40(void) {
+    LOG_ENTER();
+    LOG_EXIT();
+}
+
+/* Forward declarations for tick functions that call each other */
+static void tick_title_screen(void);
+static void tick_state_dispatch(void);
+
+/* Render prep — original at 0x004086e0 */
+static void tick_render_prep(void) {
+    uint32_t *dst = (uint32_t *)DAT(void*, 0x0063F000 + 0x01AE61E0);
+    uint32_t a = DAT(uint32_t, 0x0063F000 + 0x006BF444);
+    uint32_t b = DAT(uint32_t, 0x0063F000 + 0x006BF448);
+    dst[0] = a; dst[1] = b; dst[2] = b; dst[3] = b;
+    dst[4] = a; dst[5] = b; dst[6] = b; dst[7] = b;
+    dst[8] = a;
+}
+
+/* Input processing — original at 0x00442ce1
+ * Reads DirectInput device state. Key for title screen advancement.
+ * The DInput device pointer is at DAT_006536cc.
+ * For now: stub that fakes no input. We'll inject "press start" later.
+ */
+static void tick_input(void) {
+    static int first_call = 1;
+    if (first_call) {
+        LOG("  tick_input: DInput device at %p (stubbed, no input read)",
+            (void*)(uintptr_t)DAT(void*, 0x0063F000 + 0x06536CC));
+        first_call = 0;
+    }
+}
+
+/* State dispatcher — original at 0x0049f8e8
+ * Jump table at PTR_FUN_005fe5e0 indexed by g_GameState & 0xF.
+ * The jump table contains VA pointers from the original binary.
+ * We can't call those directly — instead we hardcode the dispatch.
+ */
+static void tick_state_dispatch(void) {
+    int state = (int)g_GameState & 0xF;
+
+    switch (state) {
+    case 0:
+        LOG("  state_dispatch: state 0 -> 1 (splash screen)");
+        g_GameState = 1;
+        g_GameSubState = 0;
+        break;
+
+    case 1:
+        /* State 1: Opening cinematic / title sequence */
+        tick_title_screen();
+        break;
+
+    case 2:
+        /* State 2: Transition (calls FUN_004cda9f, advances immediately) */
+        LOG("  state_dispatch: state 2 -> 3 (transition)");
+        DAT(uint16_t, 0x0063F000 + 0x01CB1500) = 0;
+        g_GameState = 3;
+        g_GameSubState = 0;
+        break;
+
+    case 3:
+        /* State 3: Menu / mode select (FUN_004B1BFC) */
+        LOG("  state_dispatch: state 3 -> 4 (menu -> game)");
+        DAT(int32_t, 0x0063F000 + 0x01AE352C) = 0;
+        DAT(int32_t, 0x0063F000 + 0x01AE3590) = 0;
+        DAT(int32_t, 0x0063F000 + 0x00681808) = -1;
+        DAT(int32_t, 0x0063F000 + 0x01AE1FFC) = 0;
+        DAT(int32_t, 0x0063F000 + 0x00BF6F50) = 0;
+        DAT(int32_t, 0x0063F000 + 0x01AE362C) = 0;
+        DAT(int32_t, 0x0063F000 + 0x01AE368C) = 0;
+        DAT(int32_t, 0x0063F000 + 0x01AE2008) = 0;
+        DAT(int32_t, 0x0063F000 + 0x00BF6F48) = 0;
+        DAT(int32_t, 0x0063F000 + 0x01AE2000) = 0;
+        DAT(int16_t, 0x0063F000 + 0x01AE35E6) = 1;
+        DAT(void*,  0x0063F000 + 0x01AE0CB8) = (void*)(voff_data_ptr() + (0x01AE1840));
+        DAT(void*,  0x0063F000 + 0x01AE12B8) = (void*)(voff_data_ptr() + (0x01AE1C20));
+        g_GameState = 4;
+        g_GameSubState = 0;
+        break;
+
+    case 4:
+        /* State 4: In-game */
+        {
+            static int logged = 0;
+            if (!logged) {
+                LOG("  state_dispatch: entered IN-GAME (state 4)!");
+                logged = 1;
+            }
+        }
+        break;
+
+    default:
+        LOG("  state_dispatch: unhandled state %d, resetting to 1", state);
+        g_GameState = 1;
+        g_GameSubState = 0;
+        break;
+    }
+}
+
+/* Title screen sub-state dispatch
+ * Jump table at PTR_FUN_005fb238 in .rdata section
+ */
+static void tick_title_screen(void) {
+    int substate = (int)g_GameSubState & 0x1F;
+    static int last_substate = -1;
+    static int log_cooldown = 0;
+
+    if (substate != last_substate) {
+        LOG("  title: substate %d -> %d", last_substate, substate);
+        last_substate = substate;
+        log_cooldown = 0;
+    }
+
+    /* Get sub-state handler from .rdata jump table (32-bit pointers) */
+    uint32_t *jump_table = (uint32_t *)(__rdata_start + (0x005FB238 - 0x005F5000));
+    uint32_t handler_va = jump_table[substate];
+
+    if (log_cooldown == 0) {
+        LOG("  title: substate=%d handler=FUN_%08X", substate, handler_va);
+        log_cooldown = 60;
+    }
+    log_cooldown--;
+
+    /* Check for game mode 2 (attract mode / start pressed) */
+    int mode = DAT(int32_t, 0x0063F000 + 0x01AE353C);
+    if (mode == 2) {
+        LOG("  title: attract mode, advancing state!");
+
+        int num_players = DAT(int32_t, 0x0063F000 + 0x03415608);
+        int found = 0;
+        for (int i = num_players - 1; i >= 0; i--) {
+            uint8_t slot = DAT(uint8_t, 0x0063F000 + 0x01AE2014 + i * 0x380);
+            if (slot == 0x20 || slot == 0x22 || slot == 0x23) {
+                found = 1;
+                DAT(uint8_t, 0x0063F000 + 0x01CAF4A2) = (uint8_t)i;
+                break;
+            }
+        }
+        DAT(int32_t, 0x0063F000 + 0x034155E4) = -1;
+        g_GameState = g_GameState + 1;
+        g_GameSubState = 0;
+        LOG("  title: advanced to game=%d sub=%d (player_found=%d)",
+            (int)g_GameState, (int)g_GameSubState, found);
+        return;
+    }
+
+    /* Normal title screen — wait for input (ENTER = START, SPACE = menu) */
+    if (handler_va == 0) {
+        g_GameSubState = 1;
+    }
+    /* (sub-state stays at current value until user presses keys) */
+
+    /* Check for Start button (bit 4 of input register) */
+    int input_bits = DAT(int32_t, 0x0063F000 + 0x01ED5EC4);
+    if ((input_bits >> 4) & 1) {
+        if (g_CDAudioMode == 0 && (g_GameSubState == 0 || g_GameSubState > 4)) {
+            LOG("  title: START pressed (input=0x%08x)", input_bits);
+            DAT(int32_t, 0x0063F000 + 0x01AE3690) = 0x10;
+        }
+    }
+}
+
+/* Animation update — original at 0x0049fbc0 */
+static void tick_anim_update(void) {
+    /* DAT_01ae61e0 = &DAT_01ae6000; DAT_006bf440 = 0; */
+    DAT(void*, 0x0063F000 + 0x01AE61E0) = (void*)(voff_data_ptr() + (0x01AE6000));
+    DAT(int32_t, 0x0063F000 + 0x006BF440) = 0;
+}
+
+/* Frame sync / timing — original at 0x005c9f70 */
+static void tick_frame_sync(void) {
+    /* Reads timing values from data section. Stubbed for now. */
+}
+
+/* DDraw surface setup (GDI) — original at 0x005146c6 */
+static void init_gdi_surface(HWND hWnd) {
+    LOG_ENTER1("hWnd=%p", (void*)hWnd);
+    /* Gets DC, selects stock brushes, calls palette setup */
+    LOG_EXIT();
+}
 
 /* ===============================================================
  * DirectDraw initialization
@@ -116,12 +397,12 @@ static BOOL ddraw_init(void)
     }
     LOG("SetCooperativeLevel OK: fullscreen+exclusive");
 
-    /* Set display mode: 640x480x16-bit */
+    /* Set display mode: 640x480x16-bit (ColorFill uses fill color) */
     hr = IDirectDraw_SetDisplayMode(g_pDD, 640, 480, 16);
     if (FAILED(hr)) {
-        hr = IDirectDraw_SetDisplayMode(g_pDD, 640, 480, 8);
+        hr = IDirectDraw_SetDisplayMode(g_pDD, 640, 480, 16);
         if (SUCCEEDED(hr)) {
-            LOG("SetDisplayMode OK: 640x480x8 (8-bit fallback)");
+            LOG("SetDisplayMode OK: 640x480x16 (16-bit fallback)");
         } else {
             LOG("SetDisplayMode FAILED: 16-bit and 8-bit both failed");
             return FALSE;
@@ -316,90 +597,221 @@ static BOOL ddraw_init(void)
 }
 
 /* ===============================================================
- * Render a frame — clear to a solid color, draw test pattern
+ * Render a frame — clean black screen with state info in log
  * =============================================================== */
-static void render_frame(void)
+/* ===============================================================
+ * BSEL sprite loader — extracts 8-bit indexed data, converts to
+ * 16-bit surface using a grayscale palette for debugging.
+ * =============================================================== */
+static LPDIRECTDRAWSURFACE load_bsel_raw(LPDIRECTDRAW lpDD,
+                                          const char *path,
+                                          int data_offset,
+                                          int w, int h)
 {
+    HANDLE hFile;
+    DWORD bytesRead;
+    uint8_t *pixels;
+    LPDIRECTDRAWSURFACE lpSurf = NULL;
     DDSURFACEDESC ddsd;
     HRESULT hr;
-    int x, y, bpp;
-    static int frame_count = 0;
-    static DWORD last_log_time = 0;
-    static int first_frame = 1;
-    DWORD now = timeGetTime();
 
-    frame_count++;
+    hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ,
+                        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) return NULL;
 
-    if (first_frame) {
-        LOG("First frame rendered");
-        first_frame = 0;
-        last_log_time = now;
-        frame_count = 0;
+    int size = w * h;
+    pixels = (uint8_t *)malloc(size);
+    if (!pixels) { CloseHandle(hFile); return NULL; }
+
+    SetFilePointer(hFile, data_offset, NULL, FILE_BEGIN);
+    ReadFile(hFile, pixels, size, &bytesRead, NULL);
+    CloseHandle(hFile);
+
+    if (bytesRead < (DWORD)size) { free(pixels); return NULL; }
+
+    /* Create 16-bit RGB surface */
+    memset(&ddsd, 0, sizeof(ddsd));
+    ddsd.dwSize = sizeof(ddsd);
+    ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
+    ddsd.dwWidth  = w;
+    ddsd.dwHeight = h;
+    ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_SYSTEMMEMORY;
+    ddsd.ddpfPixelFormat.dwSize = sizeof(DDPIXELFORMAT);
+    ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
+    ddsd.ddpfPixelFormat.dwRGBBitCount = 16;
+    ddsd.ddpfPixelFormat.dwRBitMask = 0xF800;
+    ddsd.ddpfPixelFormat.dwGBitMask = 0x07E0;
+    ddsd.ddpfPixelFormat.dwBBitMask = 0x001F;
+
+    hr = IDirectDraw_CreateSurface(lpDD, &ddsd, &lpSurf, NULL);
+    if (FAILED(hr)) { free(pixels); return NULL; }
+
+    /* Lock and fill with grayscale palette */
+    memset(&ddsd, 0, sizeof(ddsd));
+    ddsd.dwSize = sizeof(ddsd);
+    hr = IDirectDrawSurface_Lock(lpSurf, NULL, &ddsd, DDLOCK_WAIT, NULL);
+    if (SUCCEEDED(hr)) {
+        uint16_t *dst = (uint16_t *)ddsd.lpSurface;
+        int pitch16 = ddsd.lPitch / 2;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                uint8_t idx = pixels[y * w + x];
+                /* Grayscale: map 0-255 to 5-6-5 RGB */
+                uint8_t r5 = (idx >> 3) & 0x1F;
+                uint8_t g6 = (idx >> 2) & 0x3F;
+                uint8_t b5 = (idx >> 3) & 0x1F;
+                dst[y * pitch16 + x] = (uint16_t)((r5 << 11) | (g6 << 5) | b5);
+            }
+        }
+        IDirectDrawSurface_Unlock(lpSurf, ddsd.lpSurface);
+    }
+    free(pixels);
+    return lpSurf;
+}
+
+/* ===============================================================
+ * TEXB texture decoder — byte-interleaved 4-bit format
+ * From FUN_00510ecb. Deinterleaves byte pairs, splits into nibbles.
+ * Returns a 1024x1024 16-bit surface (grayscale for now).
+ * =============================================================== */
+static LPDIRECTDRAWSURFACE texb_load_atlas(LPDIRECTDRAW lpDD, int texb_index)
+{
+    char path[512];
+    HANDLE hFile;
+    DWORD br;
+    uint8_t *raw, *deint;
+    LPDIRECTDRAWSURFACE surf = NULL;
+    int i;
+
+    snprintf(path, sizeof(path), "%s/../out_stage2/data/V_ON/TEXB%d.IMG",
+             ".", texb_index);
+
+    hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ,
+                        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        LOG("TEXB%d: cannot open %s", texb_index, path);
+        return NULL;
     }
 
-    /* Log FPS every 2 seconds */
-    if (now - last_log_time >= 2000) {
-        float fps = frame_count * 1000.0f / (float)(now - last_log_time + 1);
-        LOG("FPS=%.1f (frame %d, %dx%d)", fps, frame_count, 640, 480);
-        frame_count = 0;
-        last_log_time = now;
+    raw = (uint8_t *)malloc(1048576);
+    if (!raw) { CloseHandle(hFile); return NULL; }
+    ReadFile(hFile, raw, 1048576, &br, NULL);
+    CloseHandle(hFile);
+    if (br < 1048576) { free(raw); return NULL; }
+
+    /* Step 1: Deinterleave. Even bytes -> bottom half, odd bytes -> top half */
+    deint = (uint8_t *)malloc(1048576);
+    if (!deint) { free(raw); return NULL; }
+
+    for (int row = 0; row < 1024; row++) {
+        for (int col = 0; col < 1024; col += 2) {
+            int src = row * 1024 + col;
+            deint[row * 1024 + col/2] = raw[src + 1];              /* odd -> top */
+            deint[(2*row + 1) * 512 + col/2] = raw[src];           /* even -> bottom */
+        }
+    }
+    free(raw);
+
+    /* Step 2: Create 16-bit surface, fill with nibble-expanded grayscale.
+     * Each deinterleaved byte -> two 4-bit texels side by side.
+     * We display as 2048x1024 surface (scaled down to fit screen). */
+    DDSURFACEDESC ddsd;
+    memset(&ddsd, 0, sizeof(ddsd));
+    ddsd.dwSize = sizeof(ddsd);
+    ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
+    ddsd.dwWidth = 2048; ddsd.dwHeight = 1024;
+    ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_SYSTEMMEMORY;
+    ddsd.ddpfPixelFormat.dwSize = sizeof(DDPIXELFORMAT);
+    ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
+    ddsd.ddpfPixelFormat.dwRGBBitCount = 16;
+    ddsd.ddpfPixelFormat.dwRBitMask = 0xF800;
+    ddsd.ddpfPixelFormat.dwGBitMask = 0x07E0;
+    ddsd.ddpfPixelFormat.dwBBitMask = 0x001F;
+
+    if (FAILED(IDirectDraw_CreateSurface(lpDD, &ddsd, &surf, NULL))) {
+        free(deint); return NULL;
     }
 
     memset(&ddsd, 0, sizeof(ddsd));
     ddsd.dwSize = sizeof(ddsd);
-
-    hr = IDirectDrawSurface_Lock(g_pDDSBack, NULL, &ddsd,
-                                  DDLOCK_WAIT | DDLOCK_WRITEONLY, NULL);
-    if (FAILED(hr))
-        return;
-
-    /* Detect pixel format from the surface */
-    bpp = ddsd.ddpfPixelFormat.dwRGBBitCount / 8;
-    if (bpp < 1) bpp = 1;
-
-    if (bpp == 2) {
-        /* 16-bit mode: 5-6-5 RGB */
-        uint16_t *buf16 = (uint16_t *)ddsd.lpSurface;
-        int pitch16 = ddsd.lPitch / 2;
-
-        for (y = 0; y < 480; y++) {
-            uint16_t *row = &buf16[y * pitch16];
-            uint16_t color = (y < 240)
-                ? (uint16_t)(((y * 31 / 240) << 11) | 0x001F)   /* blue gradient top */
-                : (uint16_t)(0x7E0 | ((479 - y) * 31 / 240));     /* green gradient bottom */
-            for (x = 0; x < 640; x++) {
-                row[x] = color;
+    if (SUCCEEDED(IDirectDrawSurface_Lock(surf, NULL, &ddsd, DDLOCK_WAIT, NULL))) {
+        uint16_t *dst = (uint16_t *)ddsd.lpSurface;
+        int pitch = ddsd.lPitch / 2;
+        for (int y = 0; y < 1024; y++) {
+            for (int x = 0; x < 1024; x++) {
+                uint8_t b = deint[y * 1024 + x];
+                uint8_t lo = b & 0xF;
+                uint8_t hi = (b >> 4) & 0xF;
+                /* Scale 0-15 to 5-bit/6-bit channels for 565 RGB */
+                uint8_t r5 = (lo * 31) / 15;
+                uint8_t g6 = (lo * 63) / 15;
+                uint8_t b5 = (lo * 31) / 15;
+                dst[y * pitch + x*2]     = (uint16_t)((r5 << 11) | (g6 << 5) | b5);
+                r5 = (hi * 31) / 15;
+                g6 = (hi * 63) / 15;
+                b5 = (hi * 31) / 15;
+                dst[y * pitch + x*2 + 1] = (uint16_t)((r5 << 11) | (g6 << 5) | b5);
             }
         }
+        IDirectDrawSurface_Unlock(surf, ddsd.lpSurface);
+    }
+    free(deint);
 
-        /* White rectangle in center */
-        for (y = 200; y < 280; y++) {
-            uint16_t *row = &buf16[y * pitch16];
-            for (x = 100; x < 540; x++) {
-                if (x < 120 || x > 520 || y < 210 || y > 270)
-                    row[x] = 0xFFFF;
-            }
-        }
-    } else {
-        /* 8-bit palettized mode */
-        uint8_t *buf8 = (uint8_t *)ddsd.lpSurface;
+    return surf;
+}
 
-        for (y = 0; y < 480; y++) {
-            int color = (y * 256) / 480;
-            for (x = 0; x < 640; x++) {
-                buf8[y * ddsd.lPitch + x] = (uint8_t)((color + x / 10) & 0xFF);
-            }
-        }
+/* TEXB atlas surface */
+static LPDIRECTDRAWSURFACE texb_atlas = NULL;
+static BOOL atlas_loaded = FALSE;
 
-        for (y = 200; y < 280; y++) {
-            for (x = 100; x < 540; x++) {
-                if (x < 120 || x > 520 || y < 210 || y > 270)
-                    buf8[y * ddsd.lPitch + x] = 255;
-            }
+/* ===============================================================
+ * Render a frame — display TEXB texture atlas
+ * =============================================================== */
+static void render_frame(void)
+{
+    static int frame_count = 0;
+    static DWORD last_log_time = 0;
+    DWORD now = timeGetTime();
+    DDBLTFX bltfx;
+    RECT dst_rect;
+
+    frame_count++;
+    if (frame_count == 1) LOG("First frame rendered");
+
+    if (!atlas_loaded) {
+        texb_atlas = texb_load_atlas(g_pDD, 0);
+        if (texb_atlas) {
+            LOG("TEXB0 atlas loaded: 2048x1024 (4-bit deinterleaved)");
+        } else {
+            LOG("TEXB0 atlas load FAILED");
         }
+        atlas_loaded = TRUE;
     }
 
-    IDirectDrawSurface_Unlock(g_pDDSBack, ddsd.lpSurface);
+    if (now - last_log_time >= 2000) {
+        float fps = frame_count * 1000.0f / (float)(now - last_log_time + 1);
+        LOG("FPS=%.1f state=%d sub=%d", fps,
+            (int)g_GameState, (int)g_GameSubState);
+        frame_count = 0;
+        last_log_time = now;
+    }
+
+    memset(&bltfx, 0, sizeof(bltfx));
+    bltfx.dwSize = sizeof(bltfx);
+    bltfx.dwFillColor = 0;
+    IDirectDrawSurface_Blt(g_pDDSBack, NULL, NULL, NULL,
+                            DDBLT_COLORFILL | DDBLT_WAIT, &bltfx);
+
+    /* Display the texture atlas — scaled to fit 640x480 */
+    if (texb_atlas) {
+        dst_rect.left   = 0;
+        dst_rect.top    = 0;
+        dst_rect.right  = 640;
+        dst_rect.bottom = 480;
+        IDirectDrawSurface_Blt(g_pDDSBack, &dst_rect,
+                                texb_atlas, NULL, DDBLT_WAIT, NULL);
+    }
+
     IDirectDrawSurface_Flip(g_pDDSFront, NULL, DDFLIP_WAIT);
 }
 
@@ -507,6 +919,24 @@ BOOL create_window(HINSTANCE hInstance, int nCmdShow)
  * =============================================================== */
 static void game_frame(void)
 {
+    static int frame = 0;
+    static int force_advance_frame = 0;
+    frame++;
+
+    /* Mode 0 tick — no CD audio (simplest path) */
+    tick_input();           /* FUN_00442ce1 — read input */
+    tick_anim_update();     /* FUN_0049fbc0 — animation */
+    tick_render_prep();     /* FUN_004086e0 — graphics setup */
+    tick_state_dispatch();  /* FUN_0049f8e8 — state machine */
+    tick_frame_sync();      /* FUN_005c9f70 — timing */
+
+    /* State machine logging every 60 frames */
+    if (frame % 60 == 0) {
+        LOG("STATE: game=%d sub=%d cd_mode=%d",
+            (int)g_GameState, (int)g_GameSubState, (int)g_CDAudioMode);
+    }
+
+    /* Also do the software render pattern for visual feedback */
     render_frame();
 }
 
@@ -520,7 +950,6 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
 {
     MSG msg;
     uint32_t cpu_type;
-    int result;
     HWND existing_wnd;
 
     /* MMX CPU check */
@@ -537,19 +966,26 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
     }
 
     if (cpu_type == 0x3D) {
-        g_MMX_K6 = 1;  /* K6 has different MMX implementation */
+        g_MMX_K6 = 1;
     }
 
-    /* Detect CD-ROM (patched to always succeed) */
-    if (!stub_cdrom_detect()) {
+    /* System check (CD-ROM detect, etc.) */
+    if (!cdrom_detect()) {
+        LOG("System check failed");
         return 0;
     }
 
-    /* Init game subsystems */
-    stub_game_init();
+    /* ============================================================
+     * REAL INIT SEQUENCE — translated from FUN_005c5c7a
+     * Call order is critical. Each function logs on entry/exit.
+     * ============================================================ */
+    LOG("=== Game Engine Init Sequence ===");
+
+    init_generic();                  /* FUN_0054056d */
 
     /* Register window class if needed */
     if (nCmdShow == 0 || !register_window_class(hInstance)) {
+        LOG("RegisterClass failed");
         return 0;
     }
 
@@ -577,6 +1013,42 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
     }
     LOG("DDraw initialized successfully");
 
+    /* Continue init sequence */
+    if (!init_thunk_47e600()) {      /* thunk_FUN_0047e600 */
+        LOG("init_thunk_47e600 failed");
+        return -1;
+    }
+
+    init_post_window();              /* FUN_005c97e2 */
+    init_dsound();                   /* FUN_005895a0 */
+    init_game_state();               /* FUN_0040df03 */
+    g_CDAudioMode = (g_CDAudioState != 0) ? 1 : 0;
+    init_misc1();                    /* FUN_005c5ac3 */
+    init_resource_loading();         /* FUN_005ce180 */
+    init_game_data();                /* FUN_00511434 */
+    init_frame_state();              /* FUN_0049f7fe */
+    init_gdi_surface(g_hWnd);       /* FUN_005146c6 */
+
+    if (!init_thunk_566fb0()) {      /* thunk_FUN_00566fb0 */
+        LOG("init_thunk_566fb0 failed");
+        return -1;
+    }
+
+    init_misc2();                    /* FUN_005c5b31 */
+    init_unk_444388();               /* FUN_00444388 */
+    init_unk_40f43e();               /* FUN_0040f43e */
+    init_unk_5cc616();               /* FUN_005cc616 */
+
+    if (g_CDAudioState != 0) {
+        init_cd_audio();             /* FUN_004b5fcf */
+        init_unk_501097();           /* FUN_00501097 */
+    }
+
+    init_unk_5898e6();               /* FUN_005898e6 */
+    init_unk_495a40();               /* FUN_00495a40 */
+
+    LOG("=== Init Complete ===");
+
     /* Dump key globals from the real data section */
     LOG("--- Data Section Diagnostics ---");
     LOG("g_GameState   = %d (was 0 with zeroed data)", (int)g_GameState);
@@ -597,18 +1069,16 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
     LOG("WindowTitle ptr = %p", (void*)(uintptr_t)DAT(uint32_t, 0x006BF548));
     LOG("--- End Diagnostics ---");
 
-    /* Force game active state (in real game, set by init code) */
-    g_IsActive = 1;
-    g_RenderFrame = 1;
-    g_RenderQuality = 1;  /* Don't check fps limiter */
+    /* The real init sequence should have set these. Log what we got. */
+    LOG("Post-init: g_GameState=%d g_GameSubState=%d g_IsActive=%d g_RenderFrame=%d",
+        (int)g_GameState, (int)g_GameSubState,
+        (int)g_IsActive, (int)g_RenderFrame);
+
+    /* Force active and render if init didn't set them */
+    if (g_IsActive == 0) g_IsActive = 1;
+    if (g_RenderFrame == 0) g_RenderFrame = 1;
 
     LOG("Entering main loop...");
-
-    /* CD audio detection */
-    g_CDAudioState = 0;
-
-    /* Additional init */
-    stub_input_update();
 
     /* Main message loop */
     for (;;) {
@@ -622,8 +1092,29 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
         /* Peek message */
         if (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
             /* Check for quit keys */
-            if (msg.message == 0x104) {
-                /* F4 or other interrupt - check */
+            if (msg.message == WM_KEYDOWN) {
+                switch (msg.wParam) {
+                case VK_ESCAPE:
+                    LOG("ESC pressed — quitting");
+                    PostQuitMessage(0);
+                    break;
+                case VK_RETURN:
+                    LOG("ENTER pressed — injecting START");
+                    DAT(int32_t, 0x0063F000 + 0x01AE353C) = 2;
+                    break;
+                case VK_SPACE:
+                    LOG("SPACE pressed — toggling input bit for state advance");
+                    DAT(int32_t, 0x0063F000 + 0x01ED5EC4) ^= 0x10;
+                    break;
+                case '1': case '2': case '3': case '4': case '5':
+                case '6': case '7': case '8': case '9': case '0': {
+                    int st = msg.wParam == '0' ? 0 : msg.wParam - '0';
+                    LOG("Force state %d", st);
+                    g_GameState = st;
+                    g_GameSubState = 0;
+                    break;
+                }
+                }
             }
             if (msg.message == WM_QUIT) {
                 LOG("WM_QUIT received, exiting");

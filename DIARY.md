@@ -1584,3 +1584,197 @@ voff/
    translating these would render the title screen
 4. **Replace host layer with SDL2** — window creation, input, and message
    loop in ~300 lines, dropping the MFC/Win32 dependency entirely
+
+---
+
+## Entry 15 — Plan: Wiring the Game Engine (Init, Tick, Input)
+
+**Date:** 2026-07-06
+
+### The goal
+
+Get past the title screen. The game boots, creates a window, initializes DDraw,
+and enters the message loop — but the render loop is a test pattern, not the
+game. To see the real title screen (and eventually gameplay), we need to wire
+up the actual game engine init and tick functions from the decompiled binary.
+
+The strategy: translate the host→engine interface functions into clean C, call
+them in the correct order, and trace the state machine until we can trigger a
+"press start" to advance.
+
+### The init sequence (in order)
+
+From `FUN_005c5c7a`, the game calls these functions after window creation:
+
+```
+1.  FUN_005c6311()              MMX CPU check
+2.  FUN_005c82ba()              CD-ROM / system check
+3.  FUN_0054056d()              Generic init
+4.  FUN_005c5909(hInst)         Register window class  [HOST]
+5.  FUN_005c59a9(hInst,...)     Create window           [HOST]
+6.  thunk_FUN_0047e600()        Unknown init (fail if 0)
+7.  FUN_005c97e2()              Post-window init
+8.  FUN_005895a0()              DirectSound init
+9.  FUN_0040df03(data)          Game state init
+10. DAT_006bc94c = ...          Set CD audio mode flag
+11. FUN_005c5ac3()              ?
+12. FUN_005ce180()              Resource loading init
+13. FUN_00511434()              Game data setup
+14. FUN_0049f7fe()              Frame/state init
+15. FUN_005146c6(hWnd)          DDraw surface setup (GDI)
+16. thunk_FUN_00566fb0()        Audio/mixer init
+17. FUN_005c5b31()              ?
+18. FUN_00444388()              ?
+19. FUN_0040f43e()              ?
+20. FUN_005cc616(hWnd)          Takes window handle
+21. FUN_004b5fcf() / FUN_00501097()  CD audio (if present)
+22. FUN_005898e6()              ?
+23. FUN_00495a40()              ?
+24. GlobalMemoryStatus()        RAM check -> low-mem mode
+```
+
+### The per-frame tick (three modes)
+
+The game has three frame modes controlled by `g_CDAudioMode`:
+
+**Mode 0** (no CD audio — stubbed/patched, simplest path to start with):
+```
+FUN_00442ce1()    ← INPUT (DirectInput + keyboard)
+FUN_0049fbc0()    ← Animation update
+FUN_004086e0()    ← Render prep / graphics setup
+FUN_0049f8e8()    ← ?
+FUN_005c9f70()    ← Frame sync / timing
+```
+
+**Mode 1** (CD audio active — normal gameplay):
+```
+FUN_00442ce1()    ← INPUT
+FUN_004b560f(1)   ← Game state machine
+FUN_005bcbd2()    ← ?
+FUN_005006df(1)   ← Core update tick
+FUN_00566dce()    ← CD audio track
+FUN_004b5c2b()    ← Game state
+FUN_0049fbc0()    ← Animation
+FUN_004086e0()    ← Render prep
+FUN_0049f8e8()    ← ?
+FUN_004b560f(0)   ← Game state machine
+FUN_00566c01()    ← CD audio
+FUN_00500d2b()    ← ?
+FUN_0040f7b0()    ← Reset matrix stack
+FUN_0041d770()    ← Load identity matrix (3D transform)
+FUN_0040f528()    ← SDE event dispatcher
+FUN_005006df(0)   ← Core update tick
+FUN_005c9f70()    ← Frame sync
+```
+
+**Mode 2** (CD audio sequential):
+```
+FUN_00442ce1()    ← INPUT
+[CD track logic]
+FUN_004b560f(0/1) ← State machine
+FUN_0049fbc0()    ← Animation
+FUN_004086e0()    ← Render prep
+FUN_0049f8e8()    ← ?
+FUN_005c9f70()    ← Frame sync
+```
+
+### Input polling
+
+Windows messages: `PeekMessage` handles keyboard shortcuts (Alt+F4, F4).
+But the main game input is in `FUN_00442ce1()` — called every frame in all
+modes. This function reads DirectInput device state and updates the game's
+input globals (`DAT_01ae3594` = game state, etc.).
+
+The title screen advancement (pressing Start/Enter) would be detected either
+in `FUN_00442ce1()` or through the state machine in `FUN_004b560f()`.
+
+### Implementation plan
+
+1. **Translate the init sequence** — all 24 functions as stubs returning
+   success (1 or TRUE). Log each one as it's called.
+2. **Translate Mode 0 per-frame tick** — 5 functions. Start with stubs,
+   then fill in `FUN_00442ce1()` (input) first.
+3. **Log the state machine** — trace `g_GameState` and `g_GameSubState`
+   each frame to watch the title→menu transition attempt.
+4. **Find and trigger "press start"** — read `FUN_00442ce1()` decompiled
+   code, find where it checks for the start button, and force it.
+5. **Expand rendering** — once the state machine advances, the render
+   prep (`FUN_004086e0`) and 3D transform (`FUN_0041d770`) should start
+   submitting geometry through D3D3.
+
+### What this unlocks
+
+Once the state machine advances past the title screen, the game's actual
+rendering pipeline activates: `FUN_004086e0` sets up per-frame state,
+`FUN_0041d770` loads the identity transform, and subsequent functions submit
+D3D execute buffers. The title screen sprites (logo text, "PRESS START
+BUTTON") would render through Wine's D3D3 translation. From there, the
+character select screen and gameplay are the same pipeline with different
+state machine mode.
+
+
+---
+
+## Entry 16 — The Texture Atlas Decoded (4-bit Byte-Interleaved)
+
+**Date:** 2026-07-06
+
+### The TEXB format
+
+Six `TEXB*.IMG` files, 1 MB each. The diary guessed they were 8-bit paletted
+pixel data back in Entry 2. That was wrong. They're more interesting than that.
+
+`FUN_00510ecb` — the texture loader — reveals the actual format:
+
+1. **Byte-interleaved.** The raw file is 1,048,576 bytes treated as pairs of
+   bytes. Odd bytes form the top half of a 1024×1024 image. Even bytes form the
+   bottom half.
+
+2. **4-bit nibble split.** After deinterleaving, each byte is split into two
+   4-bit pixels (high nibble and low nibble). This produces a 2048×1024 image
+   with 4 bits per pixel — 16 possible values per texel.
+
+3. **Mipmap chain.** The loader generates a full mipmap chain: 1024×1024,
+   512×512, 256×256, 128×128, 64×64, 32×32. Each level is stored at a different
+   address in the data section.
+
+4. **16-color palette.** The 4-bit values index into a 16-entry palette stored
+   somewhere in the data section. Finding that palette is the next challenge.
+
+The deinterleave algorithm, translated from the decompiled code:
+
+```c
+for (row = 0; row < 1024; row++) {
+    for (col = 0; col < 1024; col += 2) {
+        int odd_byte  = source[row * 1024 + col + 1];
+        int even_byte = source[row * 1024 + col];
+        dest[row * 1024 + col/2] = odd_byte;           // top half
+        dest[(2*row + 1) * 512 + col/2] = even_byte;   // bottom half
+    }
+}
+```
+
+Then each byte in the deinterleaved image becomes two 4-bit texels:
+
+```
+texel_lo = byte & 0x0F;
+texel_hi = byte >> 4;
+```
+
+### The texture explorer
+
+Built `texplorer.html` — a zero-dependency JavaScript tool for iterating on
+texture format discovery. Drag-and-drop TEXB files, dial in stride/width/height,
+toggle palette modes, auto-scan all dimensions. The "VOFF 4-bit" mode implements
+the deinterleave + nibble-split decoder, showing both the 1024×1024
+deinterleaved view and the 2048×1024 nibble-expanded view.
+
+This replaces the cycle of: edit C code → compile → launch Wine → squint at
+screen. Now: open a browser tab, drop a file, see it instantly.
+
+### What's still missing
+
+The 16-color palette. The 4-bit texel values (0-15) map to actual RGB colors
+through a palette that must be in the `.data` or `.rdata` section. Finding it
+would make the textures viewable in their intended colors.
+
