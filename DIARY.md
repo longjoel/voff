@@ -1778,3 +1778,74 @@ The 16-color palette. The 4-bit texel values (0-15) map to actual RGB colors
 through a palette that must be in the `.data` or `.rdata` section. Finding it
 would make the textures viewable in their intended colors.
 
+
+---
+
+## Entry 17 — Plan: Getting the Title Screen Visible
+
+**Date:** 2026-07-06
+
+### The problem
+
+The state machine runs through states 0→1→2→3→4, but the title screen (state
+1) is completely dark. We're not calling any of the game's actual rendering code
+— our `render_frame()` just shows the decoded TEXB atlas as a background.
+
+To get the title screen rendering properly, we need to run the game's own title
+screen sub-state handlers and render sprites through the game's pipeline.
+
+### The architecture
+
+The title screen state (state 1, `FUN_0044b38c`) dispatches through 24 sub-states
+via a jump table at `PTR_FUN_005fb238`:
+
+- Sub-states 0-4: Initialize sprite system, transform slots, fade engine
+- Sub-states 5-7: Load assets, fade in
+- Sub-state 8: Copy animation keyframes to render slots
+- **Sub-state 9**: Main display loop — calls `FUN_0044ae55` ~575 times to
+  render sprites for "VIRTUAL ON" logo and "PRESS START BUTTON" text
+- Sub-states 10-31: Attract mode, sound, options transitions
+
+Each sprite is drawn by `FUN_0042ca55`, which sets up a 3×4 transform matrix,
+then submits a D3D execute buffer. The execute buffer chain (`FUN_005cc380` →
+`FUN_005cc4c6` → `FUN_005e03a0`) is a 1400+ line software triangle rasterizer.
+
+### The strategy: Hybrid approach
+
+Rather than translating the entire 1400-line D3D rasterizer, we replace the
+rendering backend with DirectDraw Blt operations while keeping the game's init
+and state machine logic intact.
+
+**Phase 1 — Build infrastructure**: Compile the ~40 needed functions from the
+decompiled source into our build
+
+**Phase 2 — Translate the state machine**: Replace our hand-rolled
+`tick_state_dispatch()` with calls to the real `FUN_0049f8e8` and
+`FUN_0044b38c`
+
+**Phase 3 — Stub the D3D chain**: Create replacement functions that log the
+calls but skip the execute buffer submission. Verify the state machine advances
+correctly through all sub-states.
+
+**Phase 4 — Implement sprite rendering**: Build a font texture atlas from the
+TEXB data. Replace `FUN_005cc4c6` with code that reads the current transform
+matrix, computes screen-space coordinates, and calls `IDirectDrawSurface::Blt`
+to draw sprites from the atlas.
+
+**Phase 5 — Wire and polish**: Hook keyboard input through the real input
+function (`FUN_00442ce1`). Handle frame timing. Get "PRESS START" to advance
+past the title screen.
+
+### Key data tables
+
+The font glyph data is in `DAT_006471e0` (offset 0x81E0 in .data section),
+indexed by character code. The sprite descriptor tables and animation data are
+in BSS (runtime-allocated) and get populated by the init functions.
+
+### Risks
+
+The biggest unknown is whether all the BSS data tables will be correctly
+populated by the init functions. Some references (like `DAT_007e7c58`) are at
+addresses past the initialized .data region and must be set up at runtime. We
+must call all init functions in the correct order.
+

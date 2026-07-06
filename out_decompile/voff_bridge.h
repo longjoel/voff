@@ -85,6 +85,9 @@ extern uint8_t *__data_start;
 
 #define RDAT(type, rva) (*(const type *)(__rdata_start + ((rva) - 0x005F5000)))
 
+/* Raw pointer accessor for the data section */
+static inline uint8_t *voff_data_ptr(void) { return __data_start; }
+
 /* ================================================================ */
 /* Import declarations from original binary's import table          */
 /* ================================================================ */
