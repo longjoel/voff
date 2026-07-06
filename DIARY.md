@@ -1961,3 +1961,92 @@ has no awareness of `HWND` or message loops.
 4. **Wire real keyboard input** — map SDL/DInput to the game's input globals
    so the user can control the game naturally.
 
+
+---
+
+## Entry 19 — MAME Source Dump: Arcade Texture & Vertex Format
+
+**Date:** 2026-07-06
+
+### What the MAME Model 2 driver tells us
+
+The arcade version of Virtual On runs on Sega Model 2B hardware. MAME's
+`model2_v.cpp` driver (by R. Belmont, ElSemi, Olivier Galibert) documents the
+hardware rasterizer. Key findings for our PC port reverse engineering:
+
+### Vertex format
+
+The Model 2 vertex structure (`poly_vertex`) has:
+- `x`, `y`, `pz` — 3D position (floats)
+- `pu`, `pv` — texture U/V coordinates in **13.3 fixed point** format
+- `p[]` — array of 4 floats (likely normal vector)
+
+The PC MT model vertex format (20 bytes = 5 floats) maps to this: 3 position
+floats + 2 UV integers? Or 3 position + 3 normal + 2 UV coords encoded as
+the 8 mystery attribute bytes.
+
+### Texture header
+
+Each polygon carries a 4-entry `texheader[]` (u16 array) controlling:
+- `texheader[0]` bits 13-14: renderer mode (textured, transparent)
+- Texture page/offset within the sheet
+- LOD/mipmap level
+- Mirror flags (X and Y)
+- Microtexture enable (128×128 detail texture)
+
+### Palette format
+
+Arcade palette entries are 16-bit words in **5-5-5 RGB** format:
+```
+bits 0-4:   Red   (0-31)
+bits 5-9:   Green (0-31)
+bits 10-14: Blue  (0-31)
+```
+System palette: 4096 entries (0x1000).
+The PC version likely uses the same 5-5-5 format encoded differently in the
+data section — worth searching `.data` for 16-entry or 4096-entry arrays
+of 16-bit values matching this pattern.
+
+### Texture parameters
+
+From the renderer (`model2rd.ipp`):
+- `tex_width`, `tex_height` — per-texture dimensions
+- `tex_x`, `tex_y` — position within sheet (with -2048/-1024 bias for
+  regular textures, different offsets for microtextures)
+- `texsheet[]` — pointer array for mipmap levels
+- `utexminlod`, `utexx`, `utexy` — microtexture parameters
+- `texmirrorx`, `texmirrory` — mirror/clamp flags
+- `texlod` — computed LOD value from log RAM lookup
+
+### U/V coordinate format
+
+U and V are in **13.3 fixed point**:
+- 13 integer bits + 3 fractional bits
+- Subtract 0.5 texel (0x80) before sampling
+- Bilinear filtering via fractional parts (0xFF mask)
+
+### Texture ROM layout
+
+Arcade ROMs: 4 MB of textures organized as `u16*` (16-bit word pointer).
+The PC's TEXB*.IMG files (1 MB each, 4-bit byte-interleaved) are a storage
+optimization — the `FUN_00510ecb` loader expands raw bytes to the
+1024×1024 texture sheet the hardware expects.
+
+### What this means for our work
+
+1. The 16-color TEXB palette should be a 16-entry × 2-byte table of 5-5-5
+   RGB values somewhere in `.data` or `.rdata`.
+2. The MT vertex mystery bytes likely encode UV coordinates in the arcade's
+   fixed-point format (possibly 13.3 or similar).
+3. The texture headers (`texheader[0..3]`) in the polygon command buffer
+   control all rendering modes — these are what the D3D execute buffer chain
+   constructs.
+4. The 37 float regions in `.rdata` may also include the LOD coefficient
+   table (`coef_table[32]`) and texture parameters (`texture_parameters[32]`).
+
+### Credit
+
+MAME Model 2 driver authors: R. Belmont, Olivier Galibert, ElSemi,
+Angelo Salese, Matthew Daniels. The hardware reverse engineering was
+originally done by ElSemi.
+
