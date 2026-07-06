@@ -9,6 +9,12 @@ void FUN_0044b38c__title_screen_dispatch(void)
   uint32_t local_c;
 
   if (DAT_01ae353c != 2) {
+    static int log_count = 0;
+    if (log_count == 0) {
+      LOG("title_dispatch: DAT_01ae353c=%d (need 2 to advance)", (int)DAT_01ae353c);
+      log_count = 60;
+    }
+    log_count--;
     if (DAT_01caf4d4 == 0) {
       /* DAT_01ed5e1e._2_2_ means bits 16-31 of the uint32_t */
       uint16_t subfield = (uint16_t)(DAT_01ed5e1e >> 16);

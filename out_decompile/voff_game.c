@@ -691,6 +691,20 @@ static void game_frame(void)
     FUN_004086e0__render_prep();          /* Render setup */
     FUN_0049f8e8__state_dispatcher();     /* State machine */
 
+    /* GetAsyncKeyState fallback: works even when DDraw eats window messages */
+    {
+        static int enter_was_down = 0;
+        if (GetAsyncKeyState(VK_RETURN) & 0x8000) {
+            if (!enter_was_down) {
+                LOG("GetAsyncKeyState: ENTER detected");
+                DAT(int32_t, 0x0063F000 + 0x01AE353C) = 2;
+                enter_was_down = 1;
+            }
+        } else {
+            enter_was_down = 0;
+        }
+    }
+
     /* State machine logging every 60 frames */
     if (frame % 60 == 0) {
         LOG("STATE: game=%d sub=%d cd=%d mode=%d",
@@ -861,8 +875,8 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
 
         /* Peek message */
         if (PeekMessageA(&msg, NULL, 0, 0, PM_REMOVE)) {
-            /* Check for quit keys */
             if (msg.message == WM_KEYDOWN) {
+                LOG("KEYDOWN: vk=0x%02x", (int)msg.wParam);
                 switch (msg.wParam) {
                 case VK_ESCAPE:
                     LOG("ESC pressed — quitting");
@@ -873,15 +887,12 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
                     DAT(int32_t, 0x0063F000 + 0x01AE353C) = 2;
                     break;
                 case VK_SPACE:
-                    LOG("SPACE pressed — toggling input bit for state advance");
                     DAT(int32_t, 0x0063F000 + 0x01ED5EC4) ^= 0x10;
                     break;
                 case '1': case '2': case '3': case '4': case '5':
                 case '6': case '7': case '8': case '9': case '0': {
                     int st = msg.wParam == '0' ? 0 : msg.wParam - '0';
-                    LOG("Force state %d", st);
-                    g_GameState = st;
-                    g_GameSubState = 0;
+                    g_GameState = st; g_GameSubState = 0;
                     break;
                 }
                 }
