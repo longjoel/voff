@@ -224,8 +224,8 @@ static void init_gdi_surface(HWND hWnd) {
  * sets display mode, creates primary surface with backbuffer.
  * =============================================================== */
 static LPDIRECTDRAW         g_pDD = NULL;
-static LPDIRECTDRAWSURFACE  g_pDDSFront = NULL;
-static LPDIRECTDRAWSURFACE  g_pDDSBack = NULL;
+LPDIRECTDRAWSURFACE  g_pDDSFront = NULL;
+LPDIRECTDRAWSURFACE  g_pDDSBack = NULL;
 static LPDIRECTDRAWPALETTE  g_pDDPal = NULL;
 
 static BOOL ddraw_init(void)
@@ -243,35 +243,23 @@ static BOOL ddraw_init(void)
     }
     LOG("DirectDrawCreate OK: g_pDD=%p", (void*)g_pDD);
 
-    /* Set cooperative level */
+    /* Set cooperative level: normal windowed mode */
     hr = IDirectDraw_SetCooperativeLevel(g_pDD, g_hWnd,
-                                          DDSCL_FULLSCREEN | DDSCL_EXCLUSIVE);
+                                          DDSCL_NORMAL);
     if (FAILED(hr)) {
         LOG("SetCooperativeLevel FAILED: hr=0x%08lx", (unsigned long)hr);
         return FALSE;
     }
-    LOG("SetCooperativeLevel OK: fullscreen+exclusive");
+    LOG("SetCooperativeLevel OK: windowed");
 
-    /* Set display mode: 640x480x16-bit (ColorFill uses fill color) */
-    hr = IDirectDraw_SetDisplayMode(g_pDD, 640, 480, 16);
-    if (FAILED(hr)) {
-        hr = IDirectDraw_SetDisplayMode(g_pDD, 640, 480, 16);
-        if (SUCCEEDED(hr)) {
-            LOG("SetDisplayMode OK: 640x480x16 (16-bit fallback)");
-        } else {
-            LOG("SetDisplayMode FAILED: 16-bit and 8-bit both failed");
-            return FALSE;
-        }
-    } else {
-        LOG("SetDisplayMode OK: 640x480x16");
-    }
+    /* In windowed mode, don't set display mode — use the desktop's current mode */
+    LOG("Windowed mode: using desktop display mode");
 
-    /* Create primary surface */
+    /* Create primary surface (windowed mode: no flip chain) */
     memset(&ddsd, 0, sizeof(ddsd));
     ddsd.dwSize = sizeof(ddsd);
-    ddsd.dwFlags = DDSD_CAPS | DDSD_BACKBUFFERCOUNT;
-    ddsd.dwBackBufferCount = 1;
-    ddsd.ddsCaps.dwCaps = DDSCAPS_PRIMARYSURFACE | DDSCAPS_FLIP | DDSCAPS_COMPLEX;
+    ddsd.dwFlags = DDSD_CAPS;
+    ddsd.ddsCaps.dwCaps = DDSCAPS_PRIMARYSURFACE;
 
     hr = IDirectDraw_CreateSurface(g_pDD, &ddsd, &g_pDDSFront, NULL);
     if (FAILED(hr)) {
@@ -279,18 +267,19 @@ static BOOL ddraw_init(void)
         return FALSE;
     }
 
-    /* Get the backbuffer */
-    {
-        DDSCAPS caps;
-        memset(&caps, 0, sizeof(caps));
-        caps.dwCaps = DDSCAPS_BACKBUFFER;
-        hr = IDirectDrawSurface_GetAttachedSurface(g_pDDSFront, &caps, &g_pDDSBack);
-        if (FAILED(hr)) {
-            LOG("GetAttachedSurface FAILED: hr=0x%08lx", (unsigned long)hr);
-            return FALSE;
-        }
+    /* Create offscreen backbuffer for rendering */
+    memset(&ddsd, 0, sizeof(ddsd));
+    ddsd.dwSize = sizeof(ddsd);
+    ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT;
+    ddsd.dwWidth  = 640;
+    ddsd.dwHeight = 480;
+    ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_SYSTEMMEMORY;
+
+    hr = IDirectDraw_CreateSurface(g_pDD, &ddsd, &g_pDDSBack, NULL);
+    if (FAILED(hr)) {
+        LOG("Create backbuffer FAILED: hr=0x%08lx", (unsigned long)hr);
+        return FALSE;
     }
-    LOG("Primary+backbuffer surfaces created: front=%p back=%p", (void*)g_pDDSFront, (void*)g_pDDSBack);
 
     /* ============================================================
      * D3D3 test: create device, execute buffer, submit test op
@@ -529,95 +518,8 @@ static LPDIRECTDRAWSURFACE load_bsel_raw(LPDIRECTDRAW lpDD,
  * From FUN_00510ecb. Deinterleaves byte pairs, splits into nibbles.
  * Returns a 1024x1024 16-bit surface (grayscale for now).
  * =============================================================== */
-static LPDIRECTDRAWSURFACE texb_load_atlas(LPDIRECTDRAW lpDD, int texb_index)
-{
-    char path[512];
-    HANDLE hFile;
-    DWORD br;
-    uint8_t *raw, *deint;
-    LPDIRECTDRAWSURFACE surf = NULL;
-    int i;
-
-    snprintf(path, sizeof(path), "%s/../out_stage2/data/V_ON/TEXB%d.IMG",
-             ".", texb_index);
-
-    hFile = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ,
-                        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) {
-        LOG("TEXB%d: cannot open %s", texb_index, path);
-        return NULL;
-    }
-
-    raw = (uint8_t *)malloc(1048576);
-    if (!raw) { CloseHandle(hFile); return NULL; }
-    ReadFile(hFile, raw, 1048576, &br, NULL);
-    CloseHandle(hFile);
-    if (br < 1048576) { free(raw); return NULL; }
-
-    /* Step 1: Deinterleave. Even bytes -> bottom half, odd bytes -> top half */
-    deint = (uint8_t *)malloc(1048576);
-    if (!deint) { free(raw); return NULL; }
-
-    for (int row = 0; row < 1024; row++) {
-        for (int col = 0; col < 1024; col += 2) {
-            int src = row * 1024 + col;
-            deint[row * 1024 + col/2] = raw[src + 1];              /* odd -> top */
-            deint[(2*row + 1) * 512 + col/2] = raw[src];           /* even -> bottom */
-        }
-    }
-    free(raw);
-
-    /* Step 2: Create 16-bit surface, fill with nibble-expanded grayscale.
-     * Each deinterleaved byte -> two 4-bit texels side by side.
-     * We display as 2048x1024 surface (scaled down to fit screen). */
-    DDSURFACEDESC ddsd;
-    memset(&ddsd, 0, sizeof(ddsd));
-    ddsd.dwSize = sizeof(ddsd);
-    ddsd.dwFlags = DDSD_CAPS | DDSD_WIDTH | DDSD_HEIGHT | DDSD_PIXELFORMAT;
-    ddsd.dwWidth = 2048; ddsd.dwHeight = 1024;
-    ddsd.ddsCaps.dwCaps = DDSCAPS_OFFSCREENPLAIN | DDSCAPS_SYSTEMMEMORY;
-    ddsd.ddpfPixelFormat.dwSize = sizeof(DDPIXELFORMAT);
-    ddsd.ddpfPixelFormat.dwFlags = DDPF_RGB;
-    ddsd.ddpfPixelFormat.dwRGBBitCount = 16;
-    ddsd.ddpfPixelFormat.dwRBitMask = 0xF800;
-    ddsd.ddpfPixelFormat.dwGBitMask = 0x07E0;
-    ddsd.ddpfPixelFormat.dwBBitMask = 0x001F;
-
-    if (FAILED(IDirectDraw_CreateSurface(lpDD, &ddsd, &surf, NULL))) {
-        free(deint); return NULL;
-    }
-
-    memset(&ddsd, 0, sizeof(ddsd));
-    ddsd.dwSize = sizeof(ddsd);
-    if (SUCCEEDED(IDirectDrawSurface_Lock(surf, NULL, &ddsd, DDLOCK_WAIT, NULL))) {
-        uint16_t *dst = (uint16_t *)ddsd.lpSurface;
-        int pitch = ddsd.lPitch / 2;
-        for (int y = 0; y < 1024; y++) {
-            for (int x = 0; x < 1024; x++) {
-                uint8_t b = deint[y * 1024 + x];
-                uint8_t lo = b & 0xF;
-                uint8_t hi = (b >> 4) & 0xF;
-                /* Scale 0-15 to 5-bit/6-bit channels for 565 RGB */
-                uint8_t r5 = (lo * 31) / 15;
-                uint8_t g6 = (lo * 63) / 15;
-                uint8_t b5 = (lo * 31) / 15;
-                dst[y * pitch + x*2]     = (uint16_t)((r5 << 11) | (g6 << 5) | b5);
-                r5 = (hi * 31) / 15;
-                g6 = (hi * 63) / 15;
-                b5 = (hi * 31) / 15;
-                dst[y * pitch + x*2 + 1] = (uint16_t)((r5 << 11) | (g6 << 5) | b5);
-            }
-        }
-        IDirectDrawSurface_Unlock(surf, ddsd.lpSurface);
-    }
-    free(deint);
-
-    return surf;
-}
 
 /* TEXB atlas surface */
-static LPDIRECTDRAWSURFACE texb_atlas = NULL;
-static BOOL atlas_loaded = FALSE;
 
 /* ===============================================================
  * Render a frame — display TEXB texture atlas
@@ -628,20 +530,9 @@ static void render_frame(void)
     static DWORD last_log_time = 0;
     DWORD now = timeGetTime();
     DDBLTFX bltfx;
-    RECT dst_rect;
 
     frame_count++;
     if (frame_count == 1) LOG("First frame rendered");
-
-    if (!atlas_loaded) {
-        texb_atlas = texb_load_atlas(g_pDD, 0);
-        if (texb_atlas) {
-            LOG("TEXB0 atlas loaded: 2048x1024 (4-bit deinterleaved)");
-        } else {
-            LOG("TEXB0 atlas load FAILED");
-        }
-        atlas_loaded = TRUE;
-    }
 
     if (now - last_log_time >= 2000) {
         float fps = frame_count * 1000.0f / (float)(now - last_log_time + 1);
@@ -653,21 +544,39 @@ static void render_frame(void)
 
     memset(&bltfx, 0, sizeof(bltfx));
     bltfx.dwSize = sizeof(bltfx);
-    bltfx.dwFillColor = 0;
+    switch ((int)g_GameState) {
+    case 0: bltfx.dwFillColor = 0x001F; break;
+    case 1: bltfx.dwFillColor = 0x0000; break;
+    case 2: bltfx.dwFillColor = 0x03E0; break;
+    case 3: bltfx.dwFillColor = 0x7C00; break;
+    case 4: bltfx.dwFillColor = 0x0010; break;
+    default: bltfx.dwFillColor = 0x0000; break;
+    }
     IDirectDrawSurface_Blt(g_pDDSBack, NULL, NULL, NULL,
                             DDBLT_COLORFILL | DDBLT_WAIT, &bltfx);
 
-    /* Display the texture atlas — scaled to fit 640x480 */
-    if (texb_atlas) {
-        dst_rect.left   = 0;
-        dst_rect.top    = 0;
-        dst_rect.right  = 640;
-        dst_rect.bottom = 480;
-        IDirectDrawSurface_Blt(g_pDDSBack, &dst_rect,
-                                texb_atlas, NULL, DDBLT_WAIT, NULL);
+    /* State indicator bar at bottom */
+    {
+        int bar_w = ((int)g_GameSubState * 640) / 32;
+        if (bar_w < 1) bar_w = 1;
+        if (bar_w > 640) bar_w = 640;
+        DDSURFACEDESC ddsd;
+        memset(&ddsd, 0, sizeof(ddsd));
+        ddsd.dwSize = sizeof(ddsd);
+        if (SUCCEEDED(IDirectDrawSurface_Lock(g_pDDSBack, NULL, &ddsd,
+                                               DDLOCK_WAIT, NULL))) {
+            uint16_t *dst = (uint16_t *)ddsd.lpSurface;
+            int pitch = ddsd.lPitch / 2;
+            uint16_t color = 0xFFFF;
+            for (int dy = 475; dy < 480; dy++)
+                for (int dx = 0; dx < bar_w; dx++)
+                    dst[dy * pitch + dx] = color;
+            IDirectDrawSurface_Unlock(g_pDDSBack, ddsd.lpSurface);
+        }
     }
 
-    IDirectDrawSurface_Flip(g_pDDSFront, NULL, DDFLIP_WAIT);
+    IDirectDrawSurface_Blt(g_pDDSFront, NULL, g_pDDSBack, NULL,
+                            DDBLT_WAIT, NULL);
 }
 
 /* ===============================================================
@@ -746,11 +655,11 @@ BOOL create_window(HINSTANCE hInstance, int nCmdShow)
     g_hAccel = LoadAcceleratorsA(hInstance, MAKEINTRESOURCEA(101));
 
     g_hWnd = CreateWindowExA(
-        WS_EX_APPWINDOW,
+        0,
         "VirtualONClass",
         "Virtual ON for PC",
-        WS_POPUP,
-        0, 0,
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT,
         640, 480,
         NULL, NULL,
         hInstance, NULL

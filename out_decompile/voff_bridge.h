@@ -130,4 +130,8 @@ void voff_log_close(void);
 /* Function declarations                                           */
 /* ================================================================ */
 
+/* DDraw surfaces — shared with game/ for sprite rendering */
+extern LPDIRECTDRAWSURFACE g_pDDSBack;
+extern LPDIRECTDRAWSURFACE g_pDDSFront;
+
 #endif /* VOFF_BRIDGE_H */

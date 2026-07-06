@@ -23,6 +23,7 @@ void FUN_0042ca55__sprite_draw(char param_1,uint32_t param_2,float param_3,uint3
   }
   fVar1 = (float)fVar3;
   iVar2 = FUN_005e6230(DAT_03656878);
+
   if (*(char *)(iVar2 + -3 + DAT_03656878) == param_1) {
     if (param_8 == 0) {
       FUN_0042c999(param_3 + fVar1,param_4,param_5);

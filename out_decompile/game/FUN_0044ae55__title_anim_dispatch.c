@@ -14,7 +14,7 @@ void FUN_0044ae55__title_anim_dispatch(int param_1)
   iVar1 = *(int *)(&DAT_0345bd28 + param_1 * 0x54);
   for (local_10 = 0; local_10 < iVar1; local_10 = local_10 + 1) {
     if (*(int *)(&DAT_0345b290 + local_c * 0x54) < *(int *)(&DAT_0345b298 + local_c * 0x54)) {
-      /* Call through PTR_FUN_005fb228 jump table (in .rdata) — stubbed */
+      /* Call through PTR_FUN_005fb228 jump table — stubbed */
       /* (*(void *)(&PTR_FUN_005fb228)[*(int *)(&DAT_0345b294 + local_c * 0x54)])(param_1,local_c); */
       *(int *)(&DAT_0345b290 + local_c * 0x54) = *(int *)(&DAT_0345b290 + local_c * 0x54) + 1;
     }
