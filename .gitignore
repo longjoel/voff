@@ -91,3 +91,4 @@ Thumbs.db
 .idea/
 BkUp.bin
 *.png
+out_decompile/dat_strings.h
