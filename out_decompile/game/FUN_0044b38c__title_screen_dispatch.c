@@ -55,6 +55,8 @@ void FUN_0044b38c__title_screen_dispatch(void)
       DAT_01ae3690 = (DAT_01ae3690 + 1) & 0x1f;
       break;
     }
+  }
+
   if (DAT_01ae353c == 2) {
     local_c = (uint32_t)DAT_03415608;
     do {

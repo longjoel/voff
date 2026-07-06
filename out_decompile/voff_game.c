@@ -545,11 +545,11 @@ static void render_frame(void)
     memset(&bltfx, 0, sizeof(bltfx));
     bltfx.dwSize = sizeof(bltfx);
     switch ((int)g_GameState) {
-    case 0: bltfx.dwFillColor = 0x001F; break;
-    case 1: bltfx.dwFillColor = 0x0000; break;
-    case 2: bltfx.dwFillColor = 0x03E0; break;
-    case 3: bltfx.dwFillColor = 0x7C00; break;
-    case 4: bltfx.dwFillColor = 0x0010; break;
+    case 0: bltfx.dwFillColor = 0x001F; break;   /* dark blue */
+    case 1: bltfx.dwFillColor = 0x0000; break;   /* black (title) */
+    case 2: bltfx.dwFillColor = 0x07E0; break;   /* bright green */
+    case 3: bltfx.dwFillColor = 0xF800; break;   /* bright red */
+    case 4: bltfx.dwFillColor = 0x001F; break;   /* blue (in-game) */
     default: bltfx.dwFillColor = 0x0000; break;
     }
     IDirectDrawSurface_Blt(g_pDDSBack, NULL, NULL, NULL,
