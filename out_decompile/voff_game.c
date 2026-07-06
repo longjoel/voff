@@ -691,17 +691,25 @@ static void game_frame(void)
     FUN_004086e0__render_prep();          /* Render setup */
     FUN_0049f8e8__state_dispatcher();     /* State machine */
 
-    /* GetAsyncKeyState for Enter: advances past title screen */
-    {
-        static int enter_was_down = 0;
-        if (GetAsyncKeyState(VK_RETURN) & 0x8000) {
-            if (!enter_was_down) {
-                LOG("GetAsyncKeyState: ENTER detected");
+    /* ============================================================
+     * Title screen advancement: SPACE to skip, or auto after 3s.
+     * ============================================================ */
+    if (g_GameState == 1) {
+        static int timer = 0;
+        static int key_down = 0;
+        timer++;
+        if (timer == 180) {
+            LOG("Auto-advance at frame %d", timer);
+            DAT(int32_t, 0x0063F000 + 0x01AE353C) = 2;
+        }
+        if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+            if (!key_down) {
+                LOG("SPACE pressed");
                 DAT(int32_t, 0x0063F000 + 0x01AE353C) = 2;
-                enter_was_down = 1;
+                key_down = 1;
             }
         } else {
-            enter_was_down = 0;
+            key_down = 0;
         }
     }
 
