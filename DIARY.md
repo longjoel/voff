@@ -2120,3 +2120,93 @@ candidates in .rdata — the thresholds need refinement. The game likely
 stores its palette as 16-bit words, but the encoding might differ from
 the arcade (PC uses a different color depth path through Windows GDI/DDraw).
 
+
+---
+
+## Entry 21 — String Archaeology: Weapons, Robots, and Source Paths
+
+**Date:** 2026-07-06
+
+### The .data section is a string goldmine
+
+28,691 ASCII strings extracted from the 3.9 MB initialized .data section.
+Filtering out CRT debug noise, keyboard scan codes, and compiler artifacts
+leaves several dense structured tables of game content.
+
+### Weapon table (fixed-stride array at 0x00658xxx)
+
+Every weapon × robot combination has 7 property variants with suffixes
+_N, _F, _S, _R, _J, _Z, packed at 36-byte strides:
+
+```
+TBOMB_N  <TEM>    TBOMB_F  <TEM>    TBOMB_S  <TEM>    TBOMB_R  <TEM>
+RIFLE_N  <TEM>    RIFLE_F  <TEM>    RIFLE_S  <TEM>    RIFLE_R  <TEM>
+BOWGUN_N <FEI>    BOWGUN_F <FEI>    BOWGUN_S <FEI>    BOWGUN_R <FEI>
+SONICWAVE_N <TEM> SONICWAVE_F <TEM> ...
+```
+
+The suffixes likely encode weapon properties — Normal, Fire, Speed, Range,
+Jump, Zone? Or animation modes. Each entry appears at a precise 36-byte
+interval, confirming the user's prediction of fixed-length sequential arrays.
+
+### Source path leak
+
+```
+D:\Virtual.ON\Release\source\main\src\pcWaveOpen.c
+```
+
+The full Sega developer build path is baked into the binary. The directory
+structure reveals: `source/main/src/` for core code, `pcWaveOpen.c` for
+Windows audio initialization.
+
+### Asset inventory (filename arrays)
+
+Sound files: `snd_zig.bin`, `snd_jag.bin`, `snd_bbb.bin`, `snd_aph.bin`,
+`snd_kas.bin`, `snd_rai.bin`, `snd_bel.bin`, `snd_vip.bin`, `snd_tem.bin`,
+`snd_else.bin` — one per robot plus generic.
+
+Map files: `map_zig.bin`, `map_jag.bin`, `map_fei.bin`, etc. — same pattern.
+
+### UI strings
+
+```
+MODE SELECT              PLAYER DATA EXPORT       TODAY'S BEST PILOTS
+2 PLAYERS VERSUS         NETWORK VERSUS           CANNOT CONTINUE
+SELECTED_VS              SELECTING_1P             VR.AVIONICS CONFIGURATION
+Low Resolution           High Resolution          FieldGraphic
+Device Settings          CurrentJoystickSettings   Joystick and KB
+```
+
+### SDE events in string form
+
+`SDE_zig_rotate`, `SDE_warning` — the 156 SDE event names from Entry 6
+are confirmed to exist as readable strings in the data section. They were
+not assigned `s_` prefixes by Ghidra because they live in a packed table
+rather than as individually-named data labels.
+
+### Network mode strings
+
+```
+THIS IS STANDALONE MACHINE       Checking Network Now
+Network Check Success            THERE IS NO COMMUNICATION BOARD!
+Network Total Nodes: %d          THIS IS MASTER SITE
+THIS IS SLAVE SITE               THIS IS RELAY SITE
+```
+
+### Error messages
+
+```
+Cannot execute with usual Pentium(R).
+Cannot create primary buffer
+OBSTACLE POINT ERROR [1P:%08x]
+HAND_PUT ID ERROR [2P:%2d]
+```
+
+### DAT_ string mnemonics
+
+Created a mapping convention: `DAT_XXXXXXXX__STR__descriptive_name`. Example:
+`DAT_006C86E0__STR__This_game_requires_MMX_R__Technology`. The generation
+script produces 28,691 entries in `out_decompile/dat_strings.h`. When browsing
+decompiled code and encountering a `DAT_` reference, grepping this file
+reveals what string lives at that address.
+
