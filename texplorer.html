@@ -229,19 +229,30 @@ function parseMTWireframe(data, stride, triLimit) {
       const z = view.getFloat32(pos + 16, true);
       currentStrip.push({x, y, z});
     } else {
-      // Non-NaN: try to determine layout
-      const x0 = view.getFloat32(pos, true);
-      const y0 = view.getFloat32(pos + 4, true);
-      const z0 = view.getFloat32(pos + 8, true);
-      const x2 = view.getFloat32(pos + 8, true);
-      const y2 = view.getFloat32(pos + 12, true);
-      const z2 = view.getFloat32(pos + 16, true);
+      // Try all three vertex layouts, pick the one with largest coordinate magnitude
+      // Type A: xyz at bytes 0,4,8
+      const ax = view.getFloat32(pos, true);
+      const ay = view.getFloat32(pos + 4, true);
+      const az = view.getFloat32(pos + 8, true);
+      // Type B: xyz at bytes 8,12,16
+      const bx = view.getFloat32(pos + 8, true);
+      const by = view.getFloat32(pos + 12, true);
+      const bz = view.getFloat32(pos + 16, true);
+      // Type C: x at 0, y at 4, z at 16
+      const cy = view.getFloat32(pos + 4, true);
+      const cz = view.getFloat32(pos + 16, true);
       
-      // Heuristic: Type A positions (bytes 0-11) tend to be in a different range
-      // than Type C (which had bytes 16-19 for z)
-      // For simplicity: use bytes 0,4,8 as default (Type A)
-      const x = x0, y = y0, z = z0;
-      currentStrip.push({x, y, z});
+      const magA = Math.abs(ax) + Math.abs(ay) + Math.abs(az);
+      const magB = Math.abs(bx) + Math.abs(by) + Math.abs(bz);
+      const magC = Math.abs(ax) + Math.abs(cy) + Math.abs(cz);
+      
+      if (magB > magA && magB > magC) {
+        currentStrip.push({x: bx, y: by, z: bz});
+      } else if (magC > magA && magC > magB) {
+        currentStrip.push({x: ax, y: cy, z: cz});
+      } else {
+        currentStrip.push({x: ax, y: ay, z: az});
+      }
     }
     
     if (strips.length > 50) break; // limit strips for performance
