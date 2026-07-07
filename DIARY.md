@@ -2343,3 +2343,68 @@ totaling ~656KB per arena). Two arenas are assembled — one per player.
 - **16-color TEXB palette**: Still unfound in .data or .rdata
 - **Keyboard input to game**: GetAsyncKeyState fires but doesn't reach state machine naturally
 
+
+---
+
+## Entry 24 — Weapon Table, LOD Coefs, and Texture Parameters Mapped
+
+**Date:** 2026-07-07
+
+### Weapon table structure (0x00658xxx, 36-byte stride)
+
+Each entry in the weapon table is exactly 36 bytes:
+
+| Offset | Size | Field |
+|---|---|---|
+| 0-15 | 16 bytes | Weapon name (space-padded, e.g. `RIFLE_N       `) |
+| 16-20 | 5 bytes | Robot tag in `<XXX>` format (`<TEM>`, `<FEI>`, etc.) |
+| 21-31 | 11 bytes | Zeros (padding) |
+| 32-35 | 4 bytes | Flag (always `0x00000001` = active/enabled) |
+
+The table is organized as: all 7 variants (N, F, S, R, J, Z) for one weapon ×
+one robot, then the next weapon, etc. Weapon names are 16-byte aligned with the
+variant suffix appended (e.g., `TBOMB_N`, `TBOMB_F`, `RIFLE_S`, `BOWGUN_R`).
+
+The flag at offset 32 is always 1 for active entries. It likely controls whether
+a weapon is available for a given robot — entries with flag=0 would be
+disabled/nonexistent combinations.
+
+### LOD coefficient table (rdata, 32 floats)
+
+Found at rdata offset 0x0DD40 (VA 0x00602D40). Values oscillate between
+~2.1-2.6 in a paired pattern (high-low-high-low), typical for distance-based
+LOD blending coefficients. A duplicate copy exists at offset 0x2B368 (VA
+0x00620368) — the debug+release duplication pattern seen in other tables.
+
+### Texture parameter table (rdata, 32 structs × 4 floats)
+
+Candidate at rdata offset 0x00088 (VA 0x005F5088). Each entry is 16 bytes:
+{diffuse, ambient, specular_control, specular_scale}. Most entries have
+diffuse=ambient=0 with varying spec_scale values (1.3-2.6 range). This
+matches the MAME Model 2 driver's `texture_parameters[32]` structure.
+
+### Arena size constants (rdata)
+
+Previously mapped in Entry 22. These are all in the rdata range 0x086D0-0x08A8C:
+
+| Constant | Value | Purpose |
+|---|---|---|
+| DAT_005fdad0 | 16,384 | scradd file size |
+| DAT_005fd6d4 | 98,304 | escrgame chunk 1 size |
+| DAT_005fda40 | 33,408 | escrgame chunk 2 size |
+| DAT_005fda50 | 278,528 | escrgame chunk 3 size |
+| DAT_005fda80 | 196,608 | escrgame chunk 4 size |
+| DAT_005fda88 | 32,768 | escrgame chunk 5 size |
+| DAT_005fda1c | 2,097,152 | Player 2 arena offset in escrgame |
+
+### Summary of mapped data elements
+
+| Data | Location | Format | Status |
+|---|---|---|---|
+| Weapon table | 0x00658BF8+ | 36-byte structs | **Decoded** |
+| LOD coefficients | rdata 0x0DD40 | 32 floats | **Located** |
+| Texture params | rdata 0x00088 | 32 x 4 floats | **Candidate** |
+| Arena sizes | rdata 0x086D0 | uint32 constants | **Decoded** |
+| Font glyph ptrs | 0x006471E0 | 96 x uint32 ptrs | **Located** |
+| 16-color palette | Unknown | 32 bytes 5-5-5 RGB | **Still missing** |
+
