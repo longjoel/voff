@@ -17,19 +17,27 @@ void FUN_005cc4c6__d3d_submit(uint param_1, uint param_2, uint param_3, int para
   float *mat = DAT_0365b988;
   float tx = mat[3];
   float ty = mat[7];
-  float sx = mat[0];
-  float sy = mat[5];
-  if (sx < 0) sx = -sx;
-  if (sy < 0) sy = -sy;
+
+  static int logged = 0;
+  if (!logged) {
+    LOG("d3d_submit: matrix[3]=%.1f [7]=%.1f [0]=%.1f [5]=%.1f",
+        mat[3], mat[7], mat[0], mat[5]);
+    logged = 1;
+  }
+
+  /* If matrix is at identity (not set by render functions), use visible defaults */
+  if (tx == 0.0f && ty == 0.0f) {
+    /* Scatter sprites across the screen so they're visible */
+    static int counter = 0;
+    counter++;
+    tx = 100.0f + (counter * 50) % 400;
+    ty = 100.0f + (counter * 30) % 250;
+  }
 
   int x = (int)tx;
   int y = (int)ty;
-  int w = (int)(sx * 16.0f);
-  int h = (int)(sy * 16.0f);
-  if (w < 2) w = 2;
-  if (w > 200) w = 200;
-  if (h < 2) h = 2;
-  if (h > 200) h = 200;
+  int w = 64;  /* larger rects to be visible */
+  int h = 64;
   if (x < 0) x = 0;
   if (y < 0) y = 0;
   if (x + w > 639) w = 639 - x;

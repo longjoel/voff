@@ -42,7 +42,7 @@ void FUN_0049f8e8__state_dispatcher(void)
               if (hold >= 60) { DAT_01ae3594 = 4; DAT_01ae3690 = 0; hold = 0; }
             }
             break;
-    case 4: /* in-game — stay here */ break;
+    case 4: FUN_004b1ca7__ingame(); break;
     default:
             DAT_01ae3594 = 1; DAT_01ae3690 = 0; break;
     }

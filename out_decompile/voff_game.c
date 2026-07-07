@@ -853,6 +853,14 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
     LOG("WindowTitle ptr = %p", (void*)(uintptr_t)DAT(uint32_t, 0x006BF548));
     LOG("--- End Diagnostics ---");
 
+    /* Initialize matrix stack to identity (normally done by FUN_0041d770) */
+    {
+        float *m = (float*)DAT_0365b988;
+        m[0]=1.0f; m[1]=0.0f; m[2]=0.0f; m[3]=0.0f;
+        m[4]=0.0f; m[5]=1.0f; m[6]=0.0f; m[7]=0.0f;
+        m[8]=0.0f; m[9]=0.0f; m[10]=1.0f; m[11]=0.0f;
+    }
+
     /* Fix: DAT_03415608 must be >= 1 and at least one player slot
      * must be active (0x20) for the title screen to advance. */
     if (DAT(int32_t, 0x0063F000 + 0x03415608) < 1) {
