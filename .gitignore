@@ -92,3 +92,4 @@ Thumbs.db
 BkUp.bin
 *.png
 out_decompile/dat_strings.h
+out_decompile/interesting_strings.txt
