@@ -2263,3 +2263,83 @@ FUN_005cacb0__file_load(filename, dest, size, param4)
 `FUN_005cadb1` couldn't be decompiled by Ghidra — shows only `return 1`.
 The actual implementation is in assembly, likely using `fopen`/`fread`/`fclose`.
 
+
+---
+
+## Entry 23 — D3D Pipeline: Execute Buffers, Triangle Strips, and the 1400-Line Rasterizer
+
+**Date:** 2026-07-07
+
+### The D3D3 execute buffer chain
+
+The game's rendering pipeline builds opcode streams in D3D execute buffers —
+the DirectX equivalent of `glBegin`/`glEnd`. The chain is:
+
+```
+sprite_render_slot (FUN_0044A670)
+  → matrix_position (FUN_00514639) — sets translation in 3x4 matrix
+  → render helpers (FUN_00408630, FUN_00408720, FUN_00408790)
+  → render_submit (FUN_00514576)    — page-table address mapping
+  → d3d_submit (FUN_005cc4c6)       — final D3D execute buffer submission
+```
+
+The core is `FUN_005e03a0` — a **1225-line software rasterizer** that reads D3D
+execute buffer opcodes and processes them on the CPU. It handles vertex
+transformation, clipping, projection, depth sorting, and pixel filling. This is
+the GPU driver implemented in software for D3D3-era hardware.
+
+### MT model vertex layout (confirmed)
+
+The 20-byte vertex stride uses **two layouts** that change at strip boundaries:
+
+**First strip** (Type A):
+- Bytes 0-11: Position (float32 x, y, z)
+- Bytes 12-19: Attribute data (normals? UVs? packed int16)
+
+**All subsequent strips** (Type B, after NaN sentinel at byte 0):
+- Bytes 0-7: Attribute data
+- Bytes 8-19: Position (float32 x, y, z)
+
+NaN float values (`exponent=0xFF, mantissa≠0`) at bytes 0-3 mark strip
+boundaries. The strip header vertex itself (the NaN vertex) also contains
+a valid position at bytes 8-19.
+
+The wireframe viewer in `texplorer.html` now handles this layout switch
+but is **still not rendering correctly** — models appear at origin rather
+than showing proper 3D geometry. The vertex positions are confirmed as
+IEEE 754 floats (exponents cluster at 127-130, not flat as fixed-point
+would be). The bounding box computation excludes garbage attribute values
+(|xyz| < 10000 filter) but something in the projection or strip assembly
+is broken.
+
+### In-game state machine live
+
+State 4 (in-game) is fully wired with 28 compiled functions and 52 stubs.
+The match flow runs through sub-states:
+- **0**: Match init — sets countdown timer to 659 frames, calls arena_setup
+- **1**: Countdown — ~4 second timer, checks player ready/input
+- **2**: Ready check — if player slot 0x20, advances immediately
+- **3-34**: Match phases — auto-advance every second through playing/rounds/results
+- **35**: NULL — exits in-game, advances state
+
+The arena loading function (`FUN_00483200`) loads `SCRADD0.BIN` (16KB height/
+displacement map), `SCRADD1.BIN` (16KB), and `ESCRGAME.BIN` (4MB in 5 chunks
+totaling ~656KB per arena). Two arenas are assembled — one per player.
+
+### Progress
+
+| Count | What |
+|---|---|
+| **28** | Compiled game functions |
+| **52** | Stub functions |
+| **0** | Compile errors |
+| **21** | Diary entries |
+| **~200 FPS** | In windowed DDraw mode |
+
+### Still not working
+
+- **MT wireframe viewer**: Models render at origin despite correct layout
+- **D3D sprite rendering**: Matrix chain mostly stubbed; rectangles drawn at (0,0)
+- **16-color TEXB palette**: Still unfound in .data or .rdata
+- **Keyboard input to game**: GetAsyncKeyState fires but doesn't reach state machine naturally
+
