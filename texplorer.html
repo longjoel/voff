@@ -191,69 +191,108 @@ function drawWireframeGrid(heights, gridW, gridH, hScale) {
 }
 
 function parseMTWireframe(data, stride, triLimit) {
-  // Parse vertices and triangle strips
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#111';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
   const view = new DataView(data.buffer);
-  let offset = 0;
+  const VERTEX_STRIDE = stride;
+  const HEADER_SIZE = 8;
   
-  // Skip 8-byte header
-  offset += 8;
+  const strips = [];
+  let currentStrip = [];
+  let currentType = 'B';
+  let stripColors = ['#0f0', '#0ff', '#f0f', '#ff0', '#f80', '#0ff', '#f00', '#00f'];
+  let colorIdx = 0;
   
-  const verts = [];
-  let triCount = 0;
-  const NaN_SENTINEL = 0x7FC00000; // NaN as uint32
-  
-  while (offset + stride <= data.length && triCount < triLimit) {
-    // Read 3 floats (x, y, z) at start of vertex
-    const x = view.getFloat32(offset, true);
-    const y = view.getFloat32(offset + 4, true);
-    const z = view.getFloat32(offset + 8, true);
+  for (let vi = 0; vi < Math.floor((data.length - HEADER_SIZE) / VERTEX_STRIDE); vi++) {
+    const pos = HEADER_SIZE + vi * VERTEX_STRIDE;
+    if (pos + VERTEX_STRIDE > data.length) break;
     
-    // Check for NaN sentinel (strip boundary)
-    const xBits = view.getUint32(offset, true);
-    if ((xBits & 0x7F800000) === 0x7F800000 && (xBits & 0x007FFFFF) !== 0) {
-      // NaN sentinel — start new strip
-      if (verts.length >= 3) {
-        drawTriangleStrip(verts);
-        triCount += verts.length - 2;
+    const word0 = view.getUint32(pos, true);
+    const exponent = (word0 >> 23) & 0xFF;
+    const mantissa = word0 & 0x007FFFFF;
+    const isNaN = exponent === 0xFF && mantissa !== 0;
+    
+    if (isNaN) {
+      // Type B strip boundary — finish current strip, start new one
+      if (currentStrip.length >= 3) {
+        strips.push({ verts: currentStrip, type: currentType, color: stripColors[colorIdx % stripColors.length] });
+        colorIdx++;
       }
-      verts.length = 0;
-      offset += stride;
-      continue;
+      currentStrip = [];
+      currentType = 'B';
+      
+      // The strip header vertex has position at bytes 8-11, 12-15, 16-19
+      const x = view.getFloat32(pos + 8, true);
+      const y = view.getFloat32(pos + 12, true);
+      const z = view.getFloat32(pos + 16, true);
+      currentStrip.push({x, y, z});
+    } else {
+      // Non-NaN: try to determine layout
+      const x0 = view.getFloat32(pos, true);
+      const y0 = view.getFloat32(pos + 4, true);
+      const z0 = view.getFloat32(pos + 8, true);
+      const x2 = view.getFloat32(pos + 8, true);
+      const y2 = view.getFloat32(pos + 12, true);
+      const z2 = view.getFloat32(pos + 16, true);
+      
+      // Heuristic: Type A positions (bytes 0-11) tend to be in a different range
+      // than Type C (which had bytes 16-19 for z)
+      // For simplicity: use bytes 0,4,8 as default (Type A)
+      const x = x0, y = y0, z = z0;
+      currentStrip.push({x, y, z});
     }
     
-    verts.push({x, y, z});
-    offset += stride;
+    if (strips.length > 50) break; // limit strips for performance
   }
   
-  // Draw remaining strip
-  if (verts.length >= 3) {
-    drawTriangleStrip(verts);
-    triCount += verts.length - 2;
+  // Final strip
+  if (currentStrip.length >= 3) {
+    strips.push({ verts: currentStrip, type: currentType, color: stripColors[colorIdx % stripColors.length] });
   }
   
-  statsEl.textContent = `MT Model | Stride: ${stride} | ~${triCount} triangles`;
-}
-
-function drawTriangleStrip(verts) {
-  ctx.strokeStyle = '#0f0';
-  ctx.lineWidth = 0.5;
+  // Find bounding box for centering
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const s of strips) {
+    for (const v of s.verts) {
+      if (Math.abs(v.x) < 100000 && Math.abs(v.y) < 100000 && Math.abs(v.z) < 100000) {
+        minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+        minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+        minZ = Math.min(minZ, v.z); maxZ = Math.max(maxZ, v.z);
+      }
+    }
+  }
   
-  for (let i = 0; i < verts.length - 2; i++) {
-    const a = project(verts[i].x * 50, verts[i].y * 50, verts[i].z * 50);
-    const b = project(verts[i+1].x * 50, verts[i+1].y * 50, verts[i+1].z * 50);
-    const c = project(verts[i+2].x * 50, verts[i+2].y * 50, verts[i+2].z * 50);
+  const scale = 300 / Math.max(maxX - minX, maxY - minY, maxZ - minZ, 1);
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const cz = (minZ + maxZ) / 2;
+  
+  let totalTris = 0;
+  for (const s of strips) {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 0.5;
+    const v = s.verts;
     
-    ctx.beginPath();
-    ctx.moveTo(a.sx, a.sy);
-    ctx.lineTo(b.sx, b.sy);
-    ctx.lineTo(c.sx, c.sy);
-    ctx.closePath();
-    ctx.stroke();
+    for (let i = 0; i < v.length - 2; i++) {
+      const a = project((v[i].x - cx) * scale, (v[i].y - cy) * scale, (v[i].z - cz) * scale);
+      const b = project((v[i+1].x - cx) * scale, (v[i+1].y - cy) * scale, (v[i+1].z - cz) * scale);
+      const c = project((v[i+2].x - cx) * scale, (v[i+2].y - cy) * scale, (v[i+2].z - cz) * scale);
+      
+      if (Math.abs(a.sx) < 10000 && Math.abs(a.sy) < 10000) {
+        ctx.beginPath();
+        ctx.moveTo(a.sx, a.sy);
+        ctx.lineTo(b.sx, b.sy);
+        ctx.lineTo(c.sx, c.sy);
+        ctx.closePath();
+        ctx.stroke();
+        totalTris++;
+      }
+    }
   }
+  
+  statsEl.textContent = `MT Model | ${strips.length} strips | ~${totalTris} tris | BBox: ${(maxX-minX).toFixed(1)} x ${(maxY-minY).toFixed(1)} x ${(maxZ-minZ).toFixed(1)}`;
 }
 
 function render() {
