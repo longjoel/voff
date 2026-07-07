@@ -39,7 +39,7 @@ data_init.o: .data.bin
 rdata_init.o: .rdata.bin
 	objcopy -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.voff_rdata .rdata.bin $@
 
-$(TARGET): $(CORE_OBJS) $(GAME_OBJS) game/stub_funcs.o
+$(TARGET): $(CORE_OBJS) $(GAME_OBJS) game/stub_funcs.o game/stub_overrides.o
 	$(WINE) $(WINE_FLAGS) -o $@ $^ $(WINE_LIBS)
 
 $(TARGET_SDL): $(SDL_OBJS)

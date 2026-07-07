@@ -859,7 +859,24 @@ int main_game_loop(HINSTANCE hInstance, int nCmdShow)
         DAT(int32_t, 0x0063F000 + 0x03415608) = 2;
         /* Mark player slot 0 as active (0x20 = player present) */
         DAT(uint8_t, 0x0063F000 + 0x01AE2014) = 0x20;
-        LOG("Set DAT_03415608=2, player slot 0 = 0x20");
+    }
+
+    /* Initialize title screen sprite render slots.
+     * These are BSS until populated by real init functions.
+     * Slot size = 0x54 bytes. 10 sprites, handler index 0, max 100 frames. */
+    {
+        int ss = 0x54;
+        DAT(int32_t, 0x0063F000 + 0x0345BD28) = 10;
+        DAT(int32_t, 0x0063F000 + 0x0345BD38) = 0;
+        for (int i = 0; i < 10; i++) {
+            int o = 0x0345B290 + i * ss;
+            DAT(int32_t, 0x0063F000 + o) = 0;
+            DAT(int32_t, 0x0063F000 + o + 4) = 0;
+            DAT(int32_t, 0x0063F000 + o + 8) = 100;
+        }
+        LOG("Initialized 10 sprite slots data=%p DAT_0345bd28=%d",
+            (void*)__data_start,
+            (int)DAT(int32_t, 0x0063F000 + 0x0345BD28));
     }
 
     /* Quick check: read jump table from rdata */

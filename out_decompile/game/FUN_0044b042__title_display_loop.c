@@ -18,6 +18,7 @@ void FUN_0044b042__title_display_loop(void)
   }
   FUN_004086e0();
   FUN_0044ae55(iVar1);
+  static int dl_log=0; if(!dl_log){LOG("display_loop: slot=%d running",(int)iVar1);dl_log=1;}
   *(int *)(&DAT_0345bd24 + iVar1 * 0x54) = *(int *)(&DAT_0345bd24 + iVar1 * 0x54) + 1;
   if (0x23f < *(int *)(&DAT_0345bd24 + iVar1 * 0x54)) {
     FUN_004cda9f(0);

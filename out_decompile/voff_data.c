@@ -33,8 +33,8 @@ void voff_log_init(const char *path)
 
     voff_log_fp = fopen(path, "w");
 
-    /* Allocate data section (50MB) */
-    __data_start = (uint8_t*)calloc(1, 0x301DB28);
+    /* Allocate data section (58MB to cover high BSS globals) */
+    __data_start = (uint8_t*)calloc(1, 0x03700000);
     if (!__data_start) {
         if (voff_log_fp) fprintf(voff_log_fp, "[VOFF] FATAL: cannot allocate data section\n");
         return;

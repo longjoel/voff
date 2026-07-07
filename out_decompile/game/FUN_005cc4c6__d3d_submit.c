@@ -8,6 +8,12 @@
 
 void FUN_005cc4c6__d3d_submit(uint param_1, uint param_2, uint param_3, int param_4)
 {
+  static int call_count = 0;
+  call_count++;
+  if (call_count == 1 || call_count % 100 == 0) {
+    LOG("d3d_submit call #%d: p1=0x%x p2=0x%x p3=0x%x p4=%d",
+        call_count, param_1, param_2, param_3, param_4);
+  }
   float *mat = DAT_0365b988;
   float tx = mat[3];
   float ty = mat[7];
