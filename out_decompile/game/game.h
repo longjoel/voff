@@ -5,13 +5,26 @@
 #include "../voff_bridge.h"
 typedef long double float10;
 
-/* === Data section globals (137 symbols) === */
+/* === Data section globals (163 symbols) === */
 #define DAT_005f8890 (*(uint32_t*)(__data_start + 6260880))
 #define DAT_005f8894 (*(uint32_t*)(__data_start + 6260884))
 #define DAT_005fb140 (*(uint32_t*)(__data_start + 6271296))
 #define DAT_005fb198 (*(uint32_t*)(__data_start + 6271384))
 #define DAT_005fb2d8 (*(uint32_t*)(__data_start + 6271704))
 #define DAT_005fb2dc (*(uint32_t*)(__data_start + 6271708))
+#define DAT_005fd6d0 (*(uint32_t*)(__data_start + 6280912))
+#define DAT_005fd6d4 (*(uint32_t*)(__data_start + 6280916))
+#define DAT_005fda1c (*(uint32_t*)(__data_start + 6281756))
+#define DAT_005fda40 (*(uint32_t*)(__data_start + 6281792))
+#define DAT_005fda44 (*(uint32_t*)(__data_start + 6281796))
+#define DAT_005fda50 (*(uint32_t*)(__data_start + 6281808))
+#define DAT_005fda54 (*(uint32_t*)(__data_start + 6281812))
+#define DAT_005fda80 (*(uint32_t*)(__data_start + 6281856))
+#define DAT_005fda84 (*(uint32_t*)(__data_start + 6281860))
+#define DAT_005fda88 (*(uint32_t*)(__data_start + 6281864))
+#define DAT_005fda8c (*(uint32_t*)(__data_start + 6281868))
+#define DAT_005fdad0 (*(uint32_t*)(__data_start + 6281936))
+#define DAT_005fdad4 (*(uint32_t*)(__data_start + 6281940))
 #define DAT_00600e88 (*(uint32_t*)(__data_start + 6295176))
 #define DAT_00600ea8 (*(uint32_t*)(__data_start + 6295208))
 #define DAT_006471e0 (*(uint32_t*)(__data_start + 6582752))
@@ -19,6 +32,10 @@ typedef long double float10;
 #define DAT_006471e8 (*(uint32_t*)(__data_start + 6582760))
 #define DAT_006536cc (*(uint32_t*)(__data_start + 6633164))
 #define DAT_006537b8 (*(uint32_t*)(__data_start + 6633400))
+#define DAT_0066c178 (*(uint32_t*)(__data_start + 6734200))
+#define DAT_0066c1a0 (*(uint32_t*)(__data_start + 6734240))
+#define DAT_0066c1a8 (*(uint32_t*)(__data_start + 6734248))
+#define DAT_0066c1ac (*(uint32_t*)(__data_start + 6734252))
 #define DAT_006bc948 (*(uint32_t*)(__data_start + 7063880))
 #define DAT_006bc94c (*(uint32_t*)(__data_start + 7063884))
 #define DAT_006bf444 (*(uint32_t*)(__data_start + 7074884))
@@ -50,10 +67,14 @@ typedef long double float10;
 #define DAT_009ebd14 (*(uint32_t*)(__data_start + 10403092))
 #define DAT_009ebd44 (*(uint32_t*)(__data_start + 10403140))
 #define DAT_00a00a1c (*(uint32_t*)(__data_start + 10488348))
+#define DAT_00bf5f78 (*(uint32_t*)(__data_start + 12541816))
+#define DAT_00bf5f7c (*(uint32_t*)(__data_start + 12541820))
+#define DAT_00bf6f1c (*(uint32_t*)(__data_start + 12545820))
 #define DAT_00bf6f50 (*(uint32_t*)(__data_start + 12545872))
 #define DAT_00bf7758 (*(uint32_t*)(__data_start + 12547928))
 #define DAT_00bf775c (*(uint32_t*)(__data_start + 12547932))
 #define DAT_01ae1c1c (*(uint32_t*)(__data_start + 28187676))
+#define DAT_01ae1ffc (*(uint32_t*)(__data_start + 28188668))
 #define DAT_01ae2004 (*(uint32_t*)(__data_start + 28188676))
 #define DAT_01ae2014 (*(uint32_t*)(__data_start + 28188692))
 #define DAT_01ae2556 (*(uint32_t*)(__data_start + 28190038))
@@ -63,12 +84,15 @@ typedef long double float10;
 #define DAT_01ae2561 (*(uint32_t*)(__data_start + 28190049))
 #define DAT_01ae2e10 (*(uint32_t*)(__data_start + 28192272))
 #define DAT_01ae2e1c (*(uint32_t*)(__data_start + 28192284))
+#define DAT_01ae2e28 (*(uint32_t*)(__data_start + 28192296))
 #define DAT_01ae3362 (*(uint32_t*)(__data_start + 28193634))
 #define DAT_01ae3528 (*(uint32_t*)(__data_start + 28194088))
 #define DAT_01ae353c (*(uint32_t*)(__data_start + 28194108))
 #define DAT_01ae354c (*(uint32_t*)(__data_start + 28194124))
 #define DAT_01ae3554 (*(uint32_t*)(__data_start + 28194132))
 #define DAT_01ae3594 (*(uint32_t*)(__data_start + 28194196))
+#define DAT_01ae3598 (*(uint32_t*)(__data_start + 28194200))
+#define DAT_01ae35a0 (*(uint32_t*)(__data_start + 28194208))
 #define DAT_01ae3690 (*(uint32_t*)(__data_start + 28194448))
 #define DAT_01ae61e0 (*(uint32_t*)(__data_start + 28205536))
 #define DAT_01caf4a2 (*(uint32_t*)(__data_start + 30078114))
@@ -121,6 +145,8 @@ typedef long double float10;
 #define DAT_0345bd24 (*(uint32_t*)(__data_start + 54902052))
 #define DAT_0345bd28 (*(uint32_t*)(__data_start + 54902056))
 #define DAT_0345bd38 (*(uint32_t*)(__data_start + 54902072))
+#define DAT_0345d420 (*(uint32_t*)(__data_start + 54907936))
+#define DAT_0353e420 (*(uint32_t*)(__data_start + 55829536))
 #define DAT_03656878 (*(uint32_t*)(__data_start + 56977528))
 #define DAT_0365b988 (*(uint32_t*)(__data_start + 56998280))
 extern uint8_t PTR_DAT_00646ff0[4096];
@@ -164,9 +190,13 @@ extern void FUN_0044b195__title_delay2(void);
 extern void FUN_0044b1a6__title_setup(void);
 extern void FUN_0044b38c__title_screen_dispatch(void);
 extern void FUN_00476620__state0_handler(void);
+extern uint32_t FUN_00483200__arena_setup(void);
 extern void FUN_0049f8e8__state_dispatcher(void);
 extern void FUN_004a6ab0__slot_setup(void);
 extern uint32_t FUN_004a6b09__slot_alloc(void);
+extern void FUN_004b15f0__ingame_init(void);
+extern void FUN_004b1841__ingame_setup1(void);
+extern void FUN_004b1b52__ingame_setup2(void);
 extern void FUN_004b1ca7__ingame(void);
 extern void FUN_004cd19e__sprite_load(int param_1);
 extern void FUN_004cd25c__sprite_init(void);
@@ -194,9 +224,13 @@ extern void FUN_005cc4c6__d3d_submit(uint param_1, uint param_2, uint param_3, i
 #define FUN_0044b1a6 FUN_0044b1a6__title_setup
 #define FUN_0044b38c FUN_0044b38c__title_screen_dispatch
 #define FUN_00476620 FUN_00476620__state0_handler
+#define FUN_00483200 FUN_00483200__arena_setup
 #define FUN_0049f8e8 FUN_0049f8e8__state_dispatcher
 #define FUN_004a6ab0 FUN_004a6ab0__slot_setup
 #define FUN_004a6b09 FUN_004a6b09__slot_alloc
+#define FUN_004b15f0 FUN_004b15f0__ingame_init
+#define FUN_004b1841 FUN_004b1841__ingame_setup1
+#define FUN_004b1b52 FUN_004b1b52__ingame_setup2
 #define FUN_004b1ca7 FUN_004b1ca7__ingame
 #define FUN_004cd19e FUN_004cd19e__sprite_load
 #define FUN_004cd25c FUN_004cd25c__sprite_init
@@ -217,7 +251,9 @@ extern int FUN_00408a00(int a0);
 extern int FUN_0042c999(int a0, int a1, int a2);
 extern void FUN_0044b1ef(void);
 extern void FUN_0046270d(void);
+extern int FUN_0047f0c0(int a0, int a1);
 extern void FUN_00480f10(void);
+extern int FUN_00480f30(int a0, int a1);
 extern void FUN_0049f82c(void);
 extern void FUN_0049fa26(void);
 extern void FUN_0049fb9b(void);
@@ -232,13 +268,19 @@ extern void FUN_004cd2bc(void);
 extern int FUN_004cd8c3(int a0, int a1);
 extern int FUN_004cf4cc(int a0, int a1);
 extern void FUN_004cf5c9(void);
+extern int FUN_004d020a(int a0);
+extern void FUN_004d026a(void);
+extern int FUN_004d0275(int a0, int a1);
 extern int FUN_004d04f8(int a0);
+extern int FUN_004d11cd(int a0);
+extern int FUN_004d1328(int a0);
 extern int FUN_004d13dc(int a0, int a1);
 extern void FUN_00514430(void);
 extern void FUN_0051456b(void);
 extern void FUN_00545d20(void);
 extern void FUN_00545dfa(void);
 extern void FUN_0054618b(void);
+extern void FUN_0056240a(void);
 extern void FUN_00589923(void);
 extern int FUN_00597311(int a0);
 extern int FUN_00597365(int a0);
@@ -247,6 +289,8 @@ extern int FUN_00597433(int a0);
 extern void FUN_005c017d(void);
 extern void FUN_005c0226(void);
 extern int FUN_005c45e0(int a0);
+extern int FUN_005cacb0(int a0, int a1, int a2, int a3);
+extern int FUN_005cafc0(int a0);
 extern void FUN_005d2fa0(void);
 extern void FUN_005dde70(void);
 extern int FUN_005e6230(int a0);

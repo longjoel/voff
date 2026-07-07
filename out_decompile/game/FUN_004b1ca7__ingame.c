@@ -60,12 +60,19 @@ void FUN_004b1ca7__ingame(void)
       DAT_01ae3690 = 0;
       LOG("ingame: NULL handler at sub=%d, advancing state", sub);
     } else {
-      /* Auto-advance sub-state every 60 frames for visibility */
-      static int frame = 0; frame++;
-      if (frame >= 60) {
-        frame = 0;
-        DAT_01ae3690 = (DAT_01ae3690 + 1) & 0x3f;
-        LOG("ingame: sub %d -> %d", sub, (int)DAT_01ae3690);
+      /* Dispatch to compiled sub-state handlers */
+      switch (sub) {
+      case 0: FUN_004b15f0__ingame_init(); break;
+      case 1: FUN_004b1841__ingame_setup1(); break;
+      case 2: FUN_004b1b52__ingame_setup2(); break;
+      default:
+        /* Auto-advance untranslated sub-states every 60 frames */
+        { static int frame = 0; frame++;
+          if (frame >= 60) { frame = 0;
+            DAT_01ae3690 = (DAT_01ae3690 + 1) & 0x3f;
+            LOG("ingame: auto sub %d -> %d", sub, (int)DAT_01ae3690); }
+        }
+        break;
       }
     }
   }
