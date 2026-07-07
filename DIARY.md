@@ -2210,3 +2210,56 @@ script produces 28,691 entries in `out_decompile/dat_strings.h`. When browsing
 decompiled code and encountering a `DAT_` reference, grepping this file
 reveals what string lives at that address.
 
+
+---
+
+## Entry 22 — Arena Loading: scradd + escrgame
+
+**Date:** 2026-07-07
+
+### The arena load pipeline
+
+`FUN_00483200` (arena_setup) is called at match init. It loads the stage
+background data from three files:
+
+| File | Size | Content |
+|---|---|---|
+| `SCRADD0.BIN` | 16,384 bytes | Displacement/height data (repeating 16-bit values: 0x2003=800, 0x6002=608) |
+| `SCRADD1.BIN` | 16,384 bytes | Same format, second copy |
+| `ESCRGAME.BIN` | 4,194,304 bytes | Background visual/audio data in chunks |
+
+The assembly process:
+
+1. `FUN_005cacb0("scradd0.bin", &DAT_0353e420, 16384, 0)` — loads scradd0
+2. Five chunks of `escrgame.bin` loaded at different offsets into the buffer:
+   - chunk 1: 98,304 bytes (background layer 1)
+   - chunk 2: 33,408 bytes (background layer 2)
+   - chunk 3: 278,528 bytes (main background)
+   - chunk 4: 196,608 bytes (background overlay)
+   - chunk 5: 32,768 bytes (detail layer)
+3. `FUN_00480f30(&DAT_0353e420, total_size)` — initializes the assembled data
+4. `FUN_0047f0c0(ptr, size)` × 3 — sets up rendering for each data block
+5. Same process repeated for player 2 arena at `&DAT_0345d420`
+
+Total assembled per arena: ~656,000 bytes.
+
+The chunk sizes are hardcoded in `.rdata` at `DAT_005fdad0` through
+`DAT_005fda8c`. The file paths are built by `FUN_005cacb0__file_load` which
+combines a base directory (`DAT_02b05d50`) with the filename using
+`wsprintfA`.
+
+`SCRADD0.BIN` contains 16-bit word pairs like `(0x2003, 0x2003, 0, 0)`
+repeating — likely a height map or collision grid for the stage geometry.
+
+### File loader chain
+
+```
+FUN_005cacb0__file_load(filename, dest, size, param4)
+  → builds full path (base_dir + filename)
+  → calls FUN_00566e47 (CD audio sync)
+  → calls FUN_005cadb1__file_read(path, dest, size, param4)  [Ghidra decompile failed]
+```
+
+`FUN_005cadb1` couldn't be decompiled by Ghidra — shows only `return 1`.
+The actual implementation is in assembly, likely using `fopen`/`fread`/`fclose`.
+
