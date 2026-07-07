@@ -251,7 +251,7 @@ function parseMTWireframe(data, stride, triLimit) {
   
   // Final strip
   if (currentStrip.length >= 3) {
-    strips.push({ verts: currentStrip, type: currentType, color: stripColors[colorIdx % stripColors.length] });
+    strips.push({ verts: currentStrip, color: stripColors[colorIdx % stripColors.length] });
   }
   
   // Find bounding box (exclude garbage attribute values)
