@@ -263,10 +263,19 @@ function parseMTWireframe(data, stride, triLimit) {
   const cz = (minZ + maxZ) / 2;
   
   let totalTris = 0;
+  let firstVerts = [];
+  let vertsTotal = 0;
   for (const s of strips) {
     ctx.strokeStyle = s.color;
     ctx.lineWidth = 0.5;
     const v = s.verts;
+    vertsTotal += v.length;
+    
+    // Capture first 3 projected screen positions for diagnostics
+    if (firstVerts.length < 3 && v.length > 0) {
+      const p = project((v[0].x - cx) * scale, (v[0].y - cy) * scale, (v[0].z - cz) * scale);
+      firstVerts.push({sx: p.sx.toFixed(0), sy: p.sy.toFixed(0), cx: (v[0].x - cx).toFixed(2), cy: (v[0].y - cy).toFixed(2), cz: (v[0].z - cz).toFixed(2)});
+    }
     
     for (let i = 0; i < v.length - 2; i++) {
       const a = project((v[i].x - cx) * scale, (v[i].y - cy) * scale, (v[i].z - cz) * scale);
@@ -285,7 +294,8 @@ function parseMTWireframe(data, stride, triLimit) {
     }
   }
   
-  statsEl.textContent = `MT Model | ${strips.length} strips | ~${totalTris} tris | BBox: ${(maxX-minX).toFixed(1)} x ${(maxY-minY).toFixed(1)} x ${(maxZ-minZ).toFixed(1)}`;
+  const diag = firstVerts.map(p => `(${p.sx},${p.sy})`).join(' ');
+  statsEl.textContent = `MT | ${strips.length} strips | ${vertsTotal}v | ~${totalTris} tris | Range: ${range.toFixed(2)} | Screen: ${diag}`;
 }
 
 function render() {
