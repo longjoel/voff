@@ -201,7 +201,7 @@ function parseMTWireframe(data, stride, triLimit) {
   
   const strips = [];
   let currentStrip = [];
-  let currentType = 'B';
+  let layout = 'A';  // First strip uses Type A, then switches to Type B
   let stripColors = ['#0f0', '#0ff', '#f0f', '#ff0', '#f80', '#0ff', '#f00', '#00f'];
   let colorIdx = 0;
   
@@ -215,25 +215,35 @@ function parseMTWireframe(data, stride, triLimit) {
     const isNaN = exponent === 0xFF && mantissa !== 0;
     
     if (isNaN) {
-      // Type B strip boundary — finish current strip, start new one
+      // Strip boundary — finish current, start new
       if (currentStrip.length >= 3) {
-        strips.push({ verts: currentStrip, type: currentType, color: stripColors[colorIdx % stripColors.length] });
+        strips.push({ verts: currentStrip, color: stripColors[colorIdx % stripColors.length] });
         colorIdx++;
       }
       currentStrip = [];
-      currentType = 'B';
+      layout = 'B';  // All strips after the first use Type B layout
       
-      // The strip header vertex has position at bytes 8-11, 12-15, 16-19
-      const x = view.getFloat32(pos + 8, true);
-      const y = view.getFloat32(pos + 12, true);
-      const z = view.getFloat32(pos + 16, true);
-      currentStrip.push({x, y, z});
+      // Strip header vertex uses Type B position (bytes 8-19)
+      currentStrip.push({
+        x: view.getFloat32(pos + 8, true),
+        y: view.getFloat32(pos + 12, true),
+        z: view.getFloat32(pos + 16, true)
+      });
     } else {
-      // Type A layout for non-NaN vertices: position at bytes 0-11
-      const x = view.getFloat32(pos, true);
-      const y = view.getFloat32(pos + 4, true);
-      const z = view.getFloat32(pos + 8, true);
-      currentStrip.push({x, y, z});
+      // Use current layout
+      if (layout === 'A') {
+        currentStrip.push({
+          x: view.getFloat32(pos, true),
+          y: view.getFloat32(pos + 4, true),
+          z: view.getFloat32(pos + 8, true)
+        });
+      } else {
+        currentStrip.push({
+          x: view.getFloat32(pos + 8, true),
+          y: view.getFloat32(pos + 12, true),
+          z: view.getFloat32(pos + 16, true)
+        });
+      }
     }
     
     if (strips.length > 50) break; // limit strips for performance
@@ -244,11 +254,11 @@ function parseMTWireframe(data, stride, triLimit) {
     strips.push({ verts: currentStrip, type: currentType, color: stripColors[colorIdx % stripColors.length] });
   }
   
-  // Find bounding box for centering
+  // Find bounding box (exclude garbage attribute values)
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const s of strips) {
     for (const v of s.verts) {
-      if (Math.abs(v.x) < 100000 && Math.abs(v.y) < 100000 && Math.abs(v.z) < 100000) {
+      if (Math.abs(v.x) < 10000 && Math.abs(v.y) < 10000 && Math.abs(v.z) < 10000) {
         minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
         minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
         minZ = Math.min(minZ, v.z); maxZ = Math.max(maxZ, v.z);
