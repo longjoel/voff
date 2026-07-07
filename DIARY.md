@@ -2408,3 +2408,53 @@ Previously mapped in Entry 22. These are all in the rdata range 0x086D0-0x08A8C:
 | Font glyph ptrs | 0x006471E0 | 96 x uint32 ptrs | **Located** |
 | 16-color palette | Unknown | 32 bytes 5-5-5 RGB | **Still missing** |
 
+
+---
+
+## Entry 25 — Resource Section Analysis
+
+**Date:** 2026-07-07
+
+### .rsrc section contents (38,912 bytes)
+
+The resource section contains only standard Windows UI resources:
+
+| Type | Count | Description |
+|---|---|---|
+| **BITMAP** (2) | 5 | IDs 106-110, ~2KB each, Japanese locale |
+| **ICON** (3) | 10 | IDs 1-10, 744 bytes each |
+| **MENU** (4) | 2 | IDs 101-102 (main menu + popup) |
+| **DIALOG** (5) | 24 | Mixed Japanese/neutral locales (options, config, network) |
+| **ACCEL** (9) | 1 | 64-byte accelerator key table |
+| **GROUP_ICON** (14) | 10 | Icon group descriptors, 20 bytes each |
+| **VERSION** (16) | 1 | 716-byte version info block |
+
+### No custom palette resource
+
+There is no `RCDATA` (type 10) resource containing a 16-color palette.
+The TEXB texture palette must be in the program's `.data` or `.rdata` section,
+not in Windows resources. This confirms it's either programmatically generated
+or embedded in a non-obvious format within the code/data sections.
+
+### What we've learned from resources
+
+The game uses Japanese as its primary locale (0x0411) with neutral English
+(0x0800) for some dialogs. The 24 dialogs include options/settings screens,
+network configuration, and control assignment panels — matching the string data
+we found in the .data section (Entry 21). The accelerator table (64 bytes)
+defines keyboard shortcuts — likely the F-keys and Alt+Enter combinations
+the original game uses.
+
+### Data mapping summary
+
+| Data | Location | Format | Status |
+|---|---|---|---|
+| Weapon table | .data 0x00658BF8+ | 36-byte structs | **Decoded** |
+| LOD coefficients | .rdata 0x0DD40 | 32 floats | **Located** |
+| Texture params | .rdata 0x00088 | 32×4 floats | **Candidate** |
+| Arena sizes | .rdata 0x086D0 | uint32 constants | **Decoded** |
+| Font glyph ptrs | .data 0x006471E0 | 96×uint32 ptrs | **Located** |
+| Resources | .rsrc | Standard Windows | **Cataloged** |
+| 16-color palette | Unknown | 32 bytes 5-5-5 RGB | **Still missing** |
+| String mnemonics | .data (all) | 28,691 ASCII strings | **Complete** |
+
