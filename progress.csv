@@ -1,63 +1,67 @@
 Subsystem,Component,Status,Notes,Address/Offset
-Audio,MCI CD audio commands,RED,Game uses mciSendString for CD audio; patched in original EXE; not yet implemented in decompiled build,-
+Audio,MCI CD audio commands,RED,Game uses mciSendString for CD audio; patched in original EXE; not yet implemented,-
 Audio,MCI error strings,GREEN,Error strings cataloged,"rdata, ~0x2B00"
-Audio,DirectSound init,GREEN,Decompiled; stubbed in build; calls FUN_005895a0,FUN_005895a0
+Audio,DirectSound init,GREEN,Decompiled; stubbed in build,FUN_005895a0
 Audio,Sound effect playback,RED,Not yet traced; references SND_ELSE.BIN,-
 Audio,CD audio mode flags,GREEN,DAT_006bc94c controls Mode 0/1/2 per-frame tick,DAT_006bc94c
 Build,Build pipeline,GREEN,Makefile + distrobox; 'make sdl' and 'make winelib' both work,-
 Build,SDL2 native binary,GREEN,Compiles and runs; SDL2 + OpenGL; rendering not wired,-
-Build,Winelib binary,GREEN,Compiles and runs; DDraw + D3D3 via Wine; 23 game funcs + 31 stubs,-
+Build,Winelib binary,GREEN,27 compiled game functions + 38 stubs; 0 compile errors; ~4.4MB .so,-
 Build,SDK installs,GREEN,distrobox Fedora 44: wine-devel GCC SDL2 OpenGL,-
-Build,ingest.py (decompile processor),GREEN,Copies+renames+fixes decompiled source into game/,-
-Build,gen_game.py (header/stub generator),GREEN,Scans game/*.c; generates game.h + stub_funcs.c,-
-Build,texplorer.html (texture viewer),GREEN,JavaScript tool for TEXB/BSEL format exploration,-
-Build,Data section embedding,GREEN,3.9MB init + 50MB BSS loaded at runtime via malloc+memcpy,-
+Build,ingest.py (decompile processor),GREEN,Copies+renames+fixes decompiled source into game/,"out_decompile/ingest.py"
+Build,gen_game.py (header/stub generator),GREEN,Scans game/*.c; generates game.h + stub_funcs.c + DAT_ macros,"out_decompile/gen_game.py"
+Build,texplorer.html (texture viewer),GREEN,JavaScript tool for TEXB/BSEL format exploration with VOFF4 decoder,texplorer.html
+Build,Data section embedding,GREEN,3.9MB init loaded; 58MB total allocation (extended for high BSS globals),voff_data.c
+Build,progress.csv (this file),GREEN,93 components across 8 subsystems,progress.csv
 Data,3D models (MT_*.BIN),GREEN,Format fully decoded (20-byte vertex stride; 3 vertex layouts; triangle strips),voff_mt_tool.py
 Data,Texture atlas (TEXB*.IMG),YELLOW,4-bit byte-interleaved format decoded; 16-color palette location unknown,FUN_00510ecb
 Data,Character select (BSEL*.BIN),RED,Sprite tables with VA pointers; pixel data identified but dimensions unknown,BSEL_APH.BIN
 Data,Stage geometry (FLD_*.BIN),RED,Not yet decoded; likely similar vertex format to MT,-
 Data,Raw PCM audio (ESCR*.BIN),GREEN,Decoded to WAV in Stage 1; 8-bit unsigned PCM,extract_von_img.py
-Data,Font glyph table,YELLOW,Located at DAT_006471e0; format not yet decoded; indexed by character code,DAT_006471e0
+Data,Font glyph table,YELLOW,Located at DAT_006471e0; array of 96 pointers to glyph data; format partially decoded,DAT_006471e0
 Data,Ghidra project database,GREEN,54MB; all 4162 functions analyzed; 5 headless scripts,ghidra_project/VirtualOn.rep/
 Data,Decompiled C source,GREEN,4162 functions in src/; 19MB of C code,out_decompile/src/
 Data,Call graph,GREEN,11245 edges mapping caller->callee relationships,out_decompile/call_graph.txt
 Data,Function index,GREEN,3961 FUN_ functions with addresses and sections,out_decompile/function_index.txt
-Data,SDE event table,GREEN,156 event strings located at .data offset 0x29B08C ; 176 ptrs at 0x29BA10,RVA 0x29B08C
+Data,SDE event table,GREEN,156 event strings located; 176 ptrs at 0x29BA10; names confirmed as readable text,RVA 0x29B08C
 Data,Float animation curves,GREEN,37 regions in .rdata (~4600 floats); likely spline control points,".rdata, various"
 Data,Weapon name table,GREEN,23 entries at 14-char stride in .rdata offset 0x2900,rdata+0x2900
-Data,Robot name table,GREEN,8 VR names in .rdata at offsets 0x4028 and 0x6B78 (debug+release copies),rdata+0x4028
+Data,Robot name table,GREEN,8 VR names in .rdata at offsets 0x4028 and 0x6B78,rdata+0x4028
 Data,Base62 alphabet table,GREEN,Character encoding table at rdata offset 0x3770,rdata+0x3770
-Data,String constants,GREEN,412 unique strings cataloged (UI; weapons; robots; input; network; errors),-
-Data,Global variables (DAT_),GREEN,7112 DAT_ references mapped to data section offsets,-
+Data,String constants,GREEN,28691 ASCII strings extracted from .data; weapon table at 0x00658xxx (36-byte stride),-
+Data,Global variables (DAT_),GREEN,7112 DAT_ references mapped to data section offsets; DAT_=offset not VA,-
 Data,Function pointer tables,GREEN,347 PTR_FUN_ references located; state machine jump tables decoded,-
+Data,.data section cartography,GREEN,64KB-block analysis: mostly strings; BSS starts at VA 0x006CF000,Entry 20
+Data,Source path leak,GREEN,D:\Virtual.ON\Release\source\main\src\pcWaveOpen.c baked into binary,Entry 21
+Data,Asset filename inventory,GREEN,Complete snd_*.bin + map_*.bin lists per robot found in .data,Entry 21
 Input,Keyboard (GetAsyncKeyState),GREEN,Enter/Space keys detected in windowed DDraw mode,-
 Input,DirectInput (DInput),YELLOW,Decompiled (FUN_00442ce1); COM vtable calls stubbed; structure understood,FUN_00442ce1
 Input,Gamepad support,RED,Strings and DirectInput init identified; not yet wired,-
 Input,Input mapping strings,GREEN,Full input config strings cataloged (DASH_BUTTON; JUMP; LEFT_TRIGGER etc.),-
 Input,Joystick registry read,RED,Registry read functions identified (FUN_0049a171); not yet implemented,-
 Rendering,D3D execute buffer pipeline,GREEN,Confirmed working through Wine (QueryInterface->FindDevice->Execute),-
-Rendering,Execute buffer chain (original),YELLOW,Decompiled; FUN_005cc380→FUN_005cc4c6→FUN_005e03a0 (1400-line rasterizer); stubbed,FUN_005cc380 etc.
-Rendering,D3D->DDraw Blt replacement,YELLOW,Planned (Phase 4); d3d_submit now draws colored rects from matrix,-
-Rendering,Matrix math,ORANGE,matrix_translate and matrix_scale ingested; push/pop/rotate pending,game/
-Rendering,Sprite drawing,ORANGE,FUN_0042ca55 ingested; D3D calls stubbed; matrix rect rendering active,game/FUN_0042ca55
+Rendering,Execute buffer chain (original),YELLOW,FUN_005cc380→FUN_005cc4c6→FUN_005e03a0 decompiled; FUN_005e03a0 not ingested,FUN_005cc380 etc.
+Rendering,D3D->DDraw Blt replacement,ORANGE,d3d_submit draws colored 64x64 rects from matrix; live pipeline through all layers,game/FUN_005cc4c6
+Rendering,Matrix math,ORANGE,matrix_translate + matrix_scale + matrix_position ingested; identity init added; push/pop/rotate pending,game/
+Rendering,Sprite drawing,ORANGE,sprite_render_slot + sprite_render_slot2 ingested; render_submit bridge wired; jump table dispatches to compiled functions,game/
 Rendering,Windowed mode,GREEN,DDSCL_NORMAL + WS_OVERLAPPEDWINDOW working; 640x480 Blt to primary,-
-Rendering,16-color TEXB palette,RED,Location unknown; needed for correct texture colors,-
-Rendering,Font/sprite text rendering,RED,Needs glyph table decoding + sprite_draw D3D replacement,-
-Rendering,State color indicator,GREEN,Colored backgrounds per game state + progress bar at bottom,-
-Rendering,Texture atlas display,ORANGE,TEXB0 decoded and displayed (grayscale); palette needed for proper colors,-
+Rendering,16-color TEXB palette,RED,Location unknown; searched both .data and .rdata; may be programmatically generated,-
+Rendering,Font/sprite text rendering,RED,Needs glyph table decoding + actual texture rendering (currently colored rects),-
+Rendering,State color indicator,GREEN,Colored backgrounds per game state + progress bar,-
+Rendering,Texture atlas display,ORANGE,TEXB0 decoded and displayed (grayscale via texplorer.html); palette needed for color,-
 State Machine,Main state dispatcher,GREEN,FUN_0049f8e8 compiled; dispatches states 0-4 via compiled handlers,game/FUN_0049f8e8
 State Machine,State 0 (splash),GREEN,FUN_00476620 compiled; auto-advances to state 1,game/FUN_00476620
-State Machine,State 1 (title screen),GREEN,FUN_0044b38c compiled; 24 sub-states dispatched via jump table,game/FUN_0044b38c
-State Machine,State 1 sub-states 0-9,GREEN,All 10 handlers compiled or auto-advanced; init->display loop sequence works,game/
-State Machine,State 1 sub-states 10-31,YELLOW,Not ingested; auto-advanced by default case; need for attract mode/options,-
+State Machine,State 1 (title screen),GREEN,FUN_0044b38c compiled; 24 sub-states dispatched; sprites render via D3D pipeline,game/FUN_0044b38c
+State Machine,State 1 sub-states 0-9,GREEN,All 10 handlers compiled; display loop calls anim_dispatch → sprite rendering,game/
+State Machine,State 1 sub-states 10-31,YELLOW,Not ingested; auto-advanced by default case,-
 State Machine,State 2 (transition),GREEN,Auto-advances to state 3 with 1s hold,-
 State Machine,State 3 (menu),GREEN,Auto-advances to state 4 with 1s hold,-
 State Machine,State 4 (in-game),GREEN,Stays at state 4; handler FUN_004B1CA7 not yet ingested,-
-State Machine,State advancement trigger,GREEN,DAT_01ae353c==2 triggers title->menu; DAT_03415608 and player slots must be initialized,-
-State Machine,Jump tables (.rdata),GREEN,PTR_FUN_005fe5e0 (main) and PTR_FUN_005fb238 (sub-state) decoded,-
-State Machine,Title display loop,GREEN,FUN_0044b042 compiled; frame counter at DAT_0345bd24 + slot*0x54; advances after 575 frames,game/FUN_0044b042
-State Machine,Player slot system,GREEN,DAT_03415608 (slot count) + DAT_01ae2014 (slot data; 0x380 bytes each); initialized manually,-
-State Machine,Per-frame tick,GREEN,5 functions called each frame (input->render_prep->state_dispatch),-
+State Machine,State advancement trigger,GREEN,DAT_01ae353c==2 triggers title->menu; player slot + mode init required,-
+State Machine,Jump tables (.rdata),GREEN,PTR_FUN_005fe5e0 (main) + PTR_FUN_005fb238 (sub-state) + PTR_FUN_005fb228 (sprite) decoded,-
+State Machine,Title display loop,GREEN,FUN_0044b042 compiled; sprite slots initialized (10 sprites; 0x54 bytes each),game/FUN_0044b042
+State Machine,Player slot system,GREEN,DAT_03415608=2; player slot 0=0x20; sprite render slots initialized manually,-
+State Machine,Per-frame tick,GREEN,input_poll + render_prep + state_dispatcher called each frame,-
 State Machine,Init sequence,GREEN,24 functions called in exact original order after window creation,-
 Reverse Engineering,Binary patches,GREEN,3 patches applied (CD audio; CD drive; MMX check) at known RVAs,-
 Reverse Engineering,MFC layer identified,GREEN,MFC classes (CMenu; CDocObjectServerItem) in CRT band; C++ host shell,-
@@ -66,6 +70,7 @@ Reverse Engineering,MSVC debug artifacts,GREEN,Debug heap fill patterns (0xDD; 0
 Reverse Engineering,PE structure,GREEN,Full PE32 analysis; 6 sections; MSVC 3.0 linker; build date Apr 10 1997,-
 Reverse Engineering,Original EXE running,GREEN,Wine + 3 patches boots to character select; full gameplay not confirmed,-
 Reverse Engineering,Ghidra 11.3.1,GREEN,Installed; headless scripts working; full auto-analysis complete in 186 seconds,-
-Reverse Engineering,DIARY.md,GREEN,18 entries documenting full journey from ISO forensics to state machine,-
+Reverse Engineering,DIARY.md,GREEN,21 entries documenting full journey from ISO forensics to D3D pipeline,-
 Reverse Engineering,V_ON.EXE decompiled,GREEN,All 4162 functions decompiled with 0 failures,-
 Reverse Engineering,Winelib toolchain,GREEN,winegcc + winebuild + wrc in distrobox Fedora 44 container,-
+Reverse Engineering,MAME Model 2 driver,GREEN,Arcade texture/vertex/palette format documented from MAME source; credited ElSemi+Belmont,Entry 19
